@@ -2,7 +2,6 @@ import torch.nn as nn
 
 
 ## FlAG ## V0.0.1 Reducer Transformer
-
 class Encoder(nn.Module):
     def __init__(self, activation, layers):
         super(Encoder, self).__init__()
@@ -25,7 +24,7 @@ class Encoder(nn.Module):
 
 
 class ActorCritic(nn.Module):
-    def __init__(self, state_dim, action_dim):
+    def __init__(self, state_dim, action_dim, action_mask):
         super(ActorCritic, self).__init__()
 
         # TODO
@@ -39,18 +38,19 @@ class ActorCritic(nn.Module):
         ]
 
         self.activation = nn.ReLU()
-        self.dim_reducer = Encoder(activation=self.activation, layers=encoder_layers)
+        # Reduce the input features for the transformer
+        self.encoder = Encoder(activation=self.activation, layers=encoder_layers)
+        # Use transformer to feature extract
         self.transformer = nn.Transformer(self.encoder_out_dim, dim_feedforward=self.transformer_out_dim)
+        # Probs for action out
         self.fc_out = nn.Linear(self.transformer_out_dim, action_dim)
 
+        ## We could split the model here? or in PPO?
+        self.actor = nn.ModuleList()
+        self.critic = nn.ModuleList()
+
     def forward(self, x):
-        out = self.dim_reducer(x)
+        out = self.encoder(x)
         out = self.transformer(out)
         out = self.activation(out)
         return self.fc_out(out)
-
-    def act(self, state):
-        return action, action_logprob
-
-    def evaluate(self, state, action):
-        return action_logprobs, state_values, dist_prob

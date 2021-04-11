@@ -1,0 +1,58 @@
+import torch.nn as nn
+
+
+## FlAG ## V0.0.1 Reducer Transformer
+
+class Encoder(nn.Module):
+    def __init__(self, activation, layers):
+        super(Encoder, self).__init__()
+
+        def encoder_conv_block(n_in, n_out, kernel_size, stride, activation):
+            return nn.Sequential(
+                nn.Conv2d(n_in, n_out, kernel_size=kernel_size, stride=stride),
+                activation
+            )
+
+        self.conv_blocks = nn.ModuleList()
+
+        for n_in, n_out, kernel_size, stride in layers:
+            self.conv_blocks.append(encoder_conv_block(n_in, n_out, kernel_size, stride, activation))
+
+        self.encoder = nn.Sequential(*self.conv_blocks)
+
+    def forward(self, x):
+        return self.encoder(x)
+
+
+class ActorCritic(nn.Module):
+    def __init__(self, state_dim, action_dim):
+        super(ActorCritic, self).__init__()
+
+        # TODO
+        self.encoder_out_dim = 200
+        self.transformer_out_dim = 200
+
+        encoder_layers = [
+            (1, 3, 10, 5),
+            (3, 3, 8, 4),
+            (3, 3, 4, 2),
+        ]
+
+        self.activation = nn.ReLU()
+        self.dim_reducer = Encoder(activation=self.activation, layers=encoder_layers)
+        self.transformer = nn.Transformer(self.encoder_out_dim, dim_feedforward=self.transformer_out_dim)
+        self.fc_out = nn.Linear(self.transformer_out_dim, action_dim)
+
+    def forward(self, x):
+        out = self.dim_reducer(x)
+        out = self.transformer(out)
+        out = self.activation(out)
+        return self.fc_out(out)
+
+    def act(self, state):
+
+
+        return action, action_logprob
+
+    def evaluate(self, state, action):
+        return action_logprobs, state_values, dist_prob

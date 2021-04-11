@@ -1,16 +1,23 @@
 from torch.optim import Optimizer
-from torch.nn import Module
 
-class Buffer():
+from project.models import ActorCritic
 
+
+class MemBuffer():
+    def __init__(self, size=10000):
+        super(MemBuffer, self).__init__()
+        self.mem_size = size
 
 
 class PPO():
-    def __init__(self, optim: Optimizer, model: Module ):
+    def __init__(self, optim: Optimizer, model: ActorCritic):
         super(PPO, self).__init__()
 
         self.optim = optim
         self.model = model
+
+    def act(self, state):
+        self.model.act(state)
 
     def train(self):
         self.optim.zero_grad()
@@ -18,5 +25,3 @@ class PPO():
         self.model.backward()
 
         self.optim.step()
-
-

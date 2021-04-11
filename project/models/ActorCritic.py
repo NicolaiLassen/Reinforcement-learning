@@ -50,9 +50,3 @@ class ActorCritic(nn.Module):
         out = self.transformer(out)
         out = self.activation(out)
         return self.fc_out(out)
-
-    def act(self, state):
-        return action, action_logprob
-
-    def evaluate(self, state, action):
-        return action_logprobs, state_values, dist_prob

@@ -11,7 +11,11 @@ if __name__ == '__main__':
     episodes = 1000
 
     model = ActorCritic()
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.Adam([
+        {'params': self.policy.actor.parameters(), 'lr': lr_actor},
+        {'params': self.policy.critic.parameters(), 'lr': lr_critic}
+    ])
+
     agent = PPO(model, 1, optimizer)
 
     # create traning loop

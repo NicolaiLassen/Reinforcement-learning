@@ -16,6 +16,8 @@ class PPO():
         self.optim = optim
         self.model = model
 
+    ## SEE PPO to use both an actor an critic network
+
     def act(self, state):
         self.model()
         ## PPO

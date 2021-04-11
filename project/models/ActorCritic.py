@@ -45,9 +45,12 @@ class ActorCritic(nn.Module):
         # Probs for action out
         self.fc_out = nn.Linear(self.transformer_out_dim, action_dim)
 
-        ## actor and critic models
+        ## We could split the model here? or in PPO?
         self.actor = nn.ModuleList()
         self.critic = nn.ModuleList()
 
     def forward(self, x):
-        return "TODO"
+        out = self.encoder(x)
+        out = self.transformer(out)
+        out = self.activation(out)
+        return self.fc_out(out)

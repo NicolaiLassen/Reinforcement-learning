@@ -50,8 +50,6 @@ class ActorCritic(nn.Module):
         return self.fc_out(out)
 
     def act(self, state):
-
-
         return action, action_logprob
 
     def evaluate(self, state, action):

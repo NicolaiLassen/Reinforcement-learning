@@ -1,10 +1,7 @@
-import gym
-import matplotlib.pyplot as plt
-import torch
-from gym.wrappers import FrameStack
 from environment.environment import EnvWrapper
-from project.agents.PPO import PPO
-from project.models.ActorCritic import ActorCritic
+from project.models.ActorCritic import ActorCritic, Encoder
+from torch import nn
+from matplotlib import pyplot as plt
 
 if __name__ == '__main__':
     # Hyperparameters
@@ -12,10 +9,15 @@ if __name__ == '__main__':
 
     # Environment initialization
     env = EnvWrapper('procgen:procgen-starpilot-v0', step_size)
+    obs = env.reset()
+    obs, reward, done, _ = env.step(env.env.action_space.sample())
 
-    obs, reward = env.step(env.env.action_space.sample())
-    print(obs.shape, reward)
-    while(True):
+    plt.imshow(obs[0])
+    plt.show()
+
+    actCritic = ActorCritic(state_dim=1, action_dim=env.env.action_space.n, action_mask="?")
+    res = actCritic(obs.unsqueeze(1))
+    print(res)
 
 #if __name__ == '__main__':
 #

@@ -1,7 +1,5 @@
 from torch.optim import Optimizer
-
 from project.models import ActorCritic
-
 
 class MemBuffer():
     def __init__(self, size=10000):

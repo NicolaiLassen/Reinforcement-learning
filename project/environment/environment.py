@@ -1,5 +1,4 @@
 import gym
-import torch
 from torchvision import transforms
 
 class EnvWrapper:
@@ -7,11 +6,11 @@ class EnvWrapper:
         self.step_size = step_size
         self.env = gym.make(environment)
         self.transformer = transforms.Compose([
-                           transforms.ToPILImage(),
-                           transforms.Grayscale(),
-                           transforms.ToTensor(),
-                           transforms.Normalize(0.5,0.5)
-                           ])
+            transforms.ToPILImage(),
+            transforms.Grayscale(),
+            transforms.ToTensor(),
+            transforms.Normalize(0.5, 0.5)
+        ])
 
     def step(self, action):
         obs, reward, done, info = self.env.step(action)

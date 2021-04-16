@@ -1,7 +1,9 @@
-from environment.environment import EnvWrapper
+from project.environment.environment import EnvWrapper
 from project.models.ActorCritic import ActorCritic, Encoder
-from torch import nn
 from matplotlib import pyplot as plt
+import os
+
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 if __name__ == '__main__':
     # Hyperparameters
@@ -16,7 +18,7 @@ if __name__ == '__main__':
     plt.show()
 
     actCritic = ActorCritic(state_dim=1, action_dim=env.env.action_space.n, action_mask="?")
-    res = actCritic(obs.unsqueeze(1))
+    res = actCritic(obs)
     print(res)
 
 #if __name__ == '__main__':

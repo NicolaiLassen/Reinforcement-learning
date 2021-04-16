@@ -29,7 +29,6 @@ class ActorCritic(nn.Module):
 
         # TODO
         self.encoder_out_dim = 3
-        self.transformer_out_dim = 200
 
         # TODO TWEAK LAYERS?
         encoder_layers = [
@@ -38,20 +37,20 @@ class ActorCritic(nn.Module):
             (3, self.encoder_out_dim, 4, 2, nn.BatchNorm2d(num_features=3)),
         ]
 
-
         # Reduce the input features for the transformer
         self.encoder = Encoder(layers=encoder_layers)
         # Use transformer to feature extract
-        self.transformer = nn.Transformer(self.encoder_out_dim, dim_feedforward=self.transformer_out_dim)
+        self.TEncoderlayer = nn.TransformerEncoderLayer(d_model=64, nhead=2)
+        self.encoder = nn.TransformerEncoder(self.TEncoderlayer, num_layers=3)
         # Probs for action out
-        self.fc_out = nn.Linear(self.transformer_out_dim, action_dim)
-
-        ## We could split the model here? or in PPO?
-        self.actor = nn.ModuleList()
-        self.critic = nn.ModuleList()
+        self.fc_1 = nn.Linear(64, 64)
+        self.fc_out = nn.Linear(64, action_dim)
+        self.activation = nn.ReLU()
 
     def forward(self, x):
-        out = self.encoder(x)
-        out = self.transformer(out)
+        out = x
+        # out = self.encoder(x)
+        out = self.encoder(out)
+        out = self.fc_1(out)
         out = self.activation(out)
         return self.fc_out(out)

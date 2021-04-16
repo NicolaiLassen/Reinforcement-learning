@@ -24,7 +24,7 @@ class Encoder(nn.Module):
 
 
 class Actor(nn.Module):
-    def __init__(self, state_dim, action_dim, action_mask):
+    def __init__(self, state_dim, action_dim):
         super(Actor, self).__init__()
 
         # TODO

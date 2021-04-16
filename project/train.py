@@ -16,8 +16,9 @@ if __name__ == '__main__':
     # Environment initialization
     env = EnvWrapper('procgen:procgen-starpilot-v0', step_size)
 
-    actor = Actor(state_dim=64, action_dim=env.env.action_space.n, action_mask="?")
-    critic = Actor(state_dim=64, action_dim=env.env.action_space.n, action_mask="?")
+    actor = Actor(state_dim=64, action_dim=env.env.action_space.n)
+    ## TODO
+    critic = Actor(state_dim=64, action_dim=env.env.action_space.n)
 
     episodes = 1000
     learning_rate = 0.005

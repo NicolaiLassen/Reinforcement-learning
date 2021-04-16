@@ -1,6 +1,7 @@
 import gym
 from torchvision import transforms
 
+
 class EnvWrapper:
     def __init__(self, environment, step_size=4):
         self.step_size = step_size

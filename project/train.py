@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 
 from project.agents.PPO import PPO
 from project.environment.environment import EnvWrapper
-from project.models.ActorCritic import ActorCritic
+from project.models.Actor import Actor
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -16,8 +16,8 @@ if __name__ == '__main__':
     # Environment initialization
     env = EnvWrapper('procgen:procgen-starpilot-v0', step_size)
 
-    actor = ActorCritic(state_dim=64, action_dim=env.env.action_space.n, action_mask="?")
-    critic = ActorCritic(state_dim=64, action_dim=env.env.action_space.n, action_mask="?")
+    actor = Actor(state_dim=64, action_dim=env.env.action_space.n, action_mask="?")
+    critic = Actor(state_dim=64, action_dim=env.env.action_space.n, action_mask="?")
 
     episodes = 1000
     learning_rate = 0.005
@@ -32,3 +32,4 @@ if __name__ == '__main__':
         agent = PPO(actor, critic, optimizer)
         obs, reward, done, _ = env.step(env.env.action_space.sample())
         agent.act(obs)
+        if done:

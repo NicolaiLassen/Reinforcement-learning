@@ -23,9 +23,9 @@ class Encoder(nn.Module):
         return self.encoder(x)
 
 
-class ActorCritic(nn.Module):
+class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, action_mask):
-        super(ActorCritic, self).__init__()
+        super(Actor, self).__init__()
 
         # TODO
         self.encoder_out_dim = 3
@@ -38,10 +38,10 @@ class ActorCritic(nn.Module):
         ]
 
         # Reduce the input features for the transformer
-        self.encoder = Encoder(layers=encoder_layers)
+        # self.encoder = Encoder(layers=encoder_layers)
         # Use transformer to feature extract
-        self.TEncoderlayer = nn.TransformerEncoderLayer(d_model=64, nhead=2)
-        self.encoder = nn.TransformerEncoder(self.TEncoderlayer, num_layers=3)
+        self.encoder_layer = nn.TransformerEncoderLayer(d_model=64, nhead=2)
+        self.encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=3)
         # Probs for action out
         self.fc_1 = nn.Linear(64, 64)
         self.fc_out = nn.Linear(64, action_dim)

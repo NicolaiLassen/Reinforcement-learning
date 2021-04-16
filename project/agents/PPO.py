@@ -3,17 +3,34 @@ from torch.optim import Optimizer
 
 
 class MemBuffer():
-    def __init__(self, size=10000):
+    def __init__(self, batch_size, size=10000, ):
         super(MemBuffer, self).__init__()
         self.mem_size = size
+        self.mem = []
+        self.batch_size = batch_size
+
+    def __len__(self):
+        return len(self.mem)
+
+    def generate(self):
+
+    def clear(self):
 
 
 class PPO():
-    def __init__(self, actor: nn.Module, critic: nn.Module, optim: Optimizer):
+    def __init__(self,
+                 actor: nn.Module,
+                 critic: nn.Module,
+                 optim: Optimizer,
+                 batch_size=64,
+                 curiosity=0.1
+                 ):
         super(PPO, self).__init__()
 
         self.optim = optim
         self.actor = actor
+        self.critic = critic
+        self.memBuffer = MemBuffer(batch_size)
 
     ## SEE PPO to use both an actor an critic network
 
@@ -32,6 +49,6 @@ class PPO():
     def train(self):
         self.optim.zero_grad()
 
-        self.model.backward()
+        self.actor.backward()
 
         self.optim.step()

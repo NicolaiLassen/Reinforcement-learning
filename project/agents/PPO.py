@@ -1,5 +1,6 @@
+from torch import nn
 from torch.optim import Optimizer
-from project.models import ActorCritic
+
 
 class MemBuffer():
     def __init__(self, size=10000):
@@ -8,11 +9,11 @@ class MemBuffer():
 
 
 class PPO():
-    def __init__(self, optim: Optimizer, model: ActorCritic):
+    def __init__(self, actor: nn.Module, critic: nn.Module, optim: Optimizer):
         super(PPO, self).__init__()
 
         self.optim = optim
-        self.model = model
+        self.actor = actor
 
     ## SEE PPO to use both an actor an critic network
 

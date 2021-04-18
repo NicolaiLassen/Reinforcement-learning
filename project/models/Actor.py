@@ -24,11 +24,12 @@ class Encoder(nn.Module):
 
 
 class Actor(nn.Module):
-    def __init__(self, state_dim, action_dim):
+    def __init__(self, state_dim, action_dim, actor):
         super(Actor, self).__init__()
 
         # TODO
         self.encoder_out_dim = 3
+        self.actor = actor
 
         # TODO TWEAK LAYERS?
         encoder_layers = [
@@ -43,14 +44,19 @@ class Actor(nn.Module):
         self.encoder_layer = nn.TransformerEncoderLayer(d_model=64, nhead=2)
         self.encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=3)
         # Probs for action out
-        self.fc_1 = nn.Linear(64, 64)
+        self.fc_1 = nn.Linear(64*64*3, 64)
         self.fc_out = nn.Linear(64, action_dim)
         self.activation = nn.ReLU()
+        self.log_softmax = nn.LogSoftmax()
 
     def forward(self, x):
         out = x
         # out = self.encoder(x)
-        out = self.encoder(out)
+        out = self.encoder(out).view(-1)
         out = self.fc_1(out)
         out = self.activation(out)
-        return self.fc_out(out)
+        out = self.fc_out(out)
+        if self.actor:
+            return self.log_softmax(out)
+        else:
+            return out

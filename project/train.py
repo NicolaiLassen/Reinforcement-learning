@@ -4,6 +4,7 @@ import torch
 from matplotlib import pyplot as plt
 
 from project.agents.PPO import PPO
+from project.models.actorCritic import ActorCritic
 from project.environment.environment import EnvWrapper
 from project.models.Actor import Actor
 
@@ -18,7 +19,7 @@ if __name__ == '__main__':
 
     actor = Actor(state_dim=64, action_dim=env.env.action_space.n)
     ## TODO
-    critic = Actor(state_dim=64, action_dim=env.env.action_space.n)
+    critic = Actor(state_dim=64, action_dim=1)
 
     episodes = 1000
     learning_rate = 0.005
@@ -30,8 +31,8 @@ if __name__ == '__main__':
 
     obs = env.reset()
     for i in range(episodes):
-        agent = PPO(actor, critic, optimizer)
+        agent = ActorCritic(env, actor, critic, optimizer)
         obs, reward, done, _ = env.step(env.env.action_space.sample())
-        agent.act(obs)
+        #agent.act(obs)
         if done:
             break

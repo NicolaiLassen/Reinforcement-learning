@@ -7,7 +7,7 @@ from project.agents.PPO import PPO
 from project.environment.environment import EnvWrapper
 from project.models.Actor import Actor
 
-os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+# os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 if __name__ == '__main__':
     # Hyperparameters
@@ -34,3 +34,4 @@ if __name__ == '__main__':
         obs, reward, done, _ = env.step(env.env.action_space.sample())
         agent.act(obs)
         if done:
+            break

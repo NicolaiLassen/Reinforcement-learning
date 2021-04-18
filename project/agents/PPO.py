@@ -13,9 +13,10 @@ class MemBuffer():
         return len(self.mem)
 
     def generate(self):
+        pass
 
     def clear(self):
-
+        pass
 
 class PPO():
     def __init__(self,
@@ -38,13 +39,13 @@ class PPO():
         self.model()
         ## PPO
 
-        return action, action_logprob
+        # return action, action_logprob
 
     def evaluate(self, state, action):
         ## PPO
         self.model()
 
-        return action_logprobs, state_values, dist_prob
+        # return action_logprobs, state_values, dist_prob
 
     def train(self):
         self.optim.zero_grad()

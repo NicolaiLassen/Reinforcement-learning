@@ -73,11 +73,13 @@ class PPOAgent(BaseAgent):
                 continue
         advantages = self.calc_advantages()
 
-    def calc_objective(self, probs, probs_old, advantages):
-        # r_t = torch.exp(probs - probs_old) PROBS RATIO
-        r_t = torch.div(probs, probs_old)
-        r_t_c = torch.clamp(r_t, min=1 - self.eps_c, max=1 + self.eps_c)
-        return -torch.min(r_t * advantages, r_t_c * advantages)
+    def calc_objective(self, probs, probs_old, A_t):
+        # r_t = torch.div(probs, probs_batch) # Paper
+        # https://cs.stackexchange.com/questions/70518/why-do-we-use-the-log-in-gradient-based-reinforcement-algorithms
+        # Better gradient than div
+        r_t = torch.exp(probs - probs_old) * A_t
+        r_t_c = torch.clamp(r_t, min=1 - self.eps_c, max=1 + self.eps_c) * A_t
+        return -torch.min(r_t, r_t_c)
 
     def calc_advantages(self):
 

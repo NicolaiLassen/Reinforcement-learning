@@ -42,6 +42,7 @@ class PPOAgent(BaseAgent):
 
                 r_net = self.critic(s)
 
+    # Probably won't work - buffer doesn't contain whole episode, wrong return
     def calc_disc_rewards(self, buffer):
 
         disc_rewards = []

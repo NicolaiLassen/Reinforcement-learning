@@ -70,12 +70,12 @@ class PPOAgent(BaseAgent):
                 act, act_probs_old, act_probs_new = self.act(s_enc)
                 s1, r, d, _ = self.env.step(act)
 
-                self.mem_buffer.rewards.append(r)
-                self.mem_buffer.done.append(d)
-                self.mem_buffer.actions.append(act)
-                self.mem_buffer.action_probs_old.append(act_probs_old)
-                self.mem_buffer.action_probs_new.append(act_probs_new)
-                self.mem_buffer.observations.append(s_enc)
+                self.mem_buffer.rewards.append(r.detach())
+                self.mem_buffer.done.append(d.detach())
+                self.mem_buffer.actions.append(act.detach())
+                self.mem_buffer.action_probs_old.append(act_probs_old.detach())
+                self.mem_buffer.action_probs_new.append(act_probs_new.detach())
+                self.mem_buffer.observations.append(s_enc.detach())
 
                 # if update_check:
                 self.update_models()
@@ -117,12 +117,17 @@ class PPOAgent(BaseAgent):
         probs = Variable(torch.stack(self.mem_buffer.action_probs_new), requires_grad=True)
         probs_old = Variable(torch.stack(self.mem_buffer.action_probs_old), requires_grad=True)
 
+        self.actor_old.load_state_dict(self.actor.state_dict())
+
         self.optimizer.zero_grad()
         advantages = self.calc_advantages()
         loss = self.calc_objective(probs, probs_old, advantages).mean()
         print(loss)
         loss.backward()
         optimizer.step()
+
+
+
         self.mem_buffer.clear()
 
 if __name__ == "__main__":

@@ -25,6 +25,7 @@ class EnvWrapper(gym.Env):
         seq = self.__get_Buffer()
         buf_seq = []
         contains_done = False
+        mask = torch.ones(self.seq_len, self.seq_len)
 
         for i in range(self.seq_len):
             obs, reward, done, info = self.env.step(action)
@@ -34,6 +35,7 @@ class EnvWrapper(gym.Env):
             buf_seq.append((frame, action, reward, done))
             if done:
                 contains_done = True
+                mask[i] = torch.zeros(self.seq_len)
                 continue
 
         return seq, buf_seq, contains_done

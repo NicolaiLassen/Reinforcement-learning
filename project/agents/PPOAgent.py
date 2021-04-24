@@ -80,6 +80,7 @@ class PPOAgent(BaseAgent):
 
                 if d:
                     break
+        print("reward: " + torch.stack(self.mem_buffer.rewards).sum())
 
 
 

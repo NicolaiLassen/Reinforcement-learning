@@ -1,3 +1,4 @@
+# Agent wrapper
 class BaseAgent:
     def act(self, act):
         raise NotImplementedError

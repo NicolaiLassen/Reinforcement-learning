@@ -2,7 +2,7 @@ import gym
 from torchvision import transforms
 
 
-class EnvWrapper:
+class EnvWrapper(gym.Env):
     def __init__(self, environment, step_size=4):
         self.step_size = step_size
         self.env = gym.make(environment)

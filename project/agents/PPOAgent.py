@@ -74,11 +74,24 @@ class PPOAgent(BaseAgent):
             if d:
                 s1, mask = self.env.reset()
                 continue
-        advantages = self.calc_advantages()
+            advantages = self.calc_advantages()
 
     def calc_advantages(self):
 
+        gamma = self.gamma
+        discounted_rewards = []
+        running_reward = 0
 
+        for r in reversed(self.mem_buffer.rewards):
+            running_reward += r + running_reward*gamma
+            gamma *= gamma
+            discounted_rewards.append(running_reward)
+
+        state_values = self.get_state_values()
+        return [(d - sv) for d, sv in zip(discounted_rewards, state_values)]
+
+    def get_state_values(self):
+        return [self.critic(state) for state in self.mem_buffer.observations]
 
 
 

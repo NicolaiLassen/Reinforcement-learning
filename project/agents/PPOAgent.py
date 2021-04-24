@@ -15,9 +15,13 @@ class PPOAgent(BaseAgent):
         self.optimizer = optimizer
 
     def act(self, state):
+        with torch.no_grad():
+
         pass
 
     def eval(self):
+        with torch.no_grad():
+
         pass
 
     def train(self, num_episodes=5, num_steps=100):
@@ -28,7 +32,9 @@ class PPOAgent(BaseAgent):
 
             for j in range(num_steps):
                 s = s1
+
                 act_probs = self.actor(s)
+
                 act_dist = Categorical(act_probs)
                 act = act_dist.sample()
                 s1, r, done, _ = self.env.step(act)
@@ -42,7 +48,7 @@ class PPOAgent(BaseAgent):
 
 
 if __name__ == "__main__":
-    seq_len = 1
+    seq_len = 10
     env_wrapper = EnvWrapper('procgen:procgen-starpilot-v0', seq_len)
 
     actor = PolicyModelEncoder(seq_len, 64, 64, env_wrapper.env.action_space.n)

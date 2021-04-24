@@ -39,8 +39,8 @@ class PolicyModelEncoder(nn.Module):
         self.activation = nn.ReLU()
         self.log_softmax = nn.LogSoftmax()
 
-    def forward(self, x):
-        out = self.encoder(x)
+    def forward(self, x, mask=None):
+        out = self.encoder(x, mask)
         out = out.view(-1, self.width * self.height)
         out = self.fc_1(out)
         out = self.activation(out)

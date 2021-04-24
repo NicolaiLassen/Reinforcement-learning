@@ -5,6 +5,7 @@ class MemBuffer:
     rewards      = []
     done         = []
     masks        = []
+    ep_lengths   = []
 
     def clear(self):
         self.observations = []

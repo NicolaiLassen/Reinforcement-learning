@@ -53,25 +53,30 @@ class PPOAgent(BaseAgent):
                     continue
                 r_net = self.critic(s)
 
-    def rollout(self, timesteps):
+    def rollout(self, timesteps, episodes):
 
         s1, mask = self.env.reset()
-        advantages = []
-        self.mem_buffer.clear()
 
-        for t in timesteps:
-            s = s1
-            ## (S, N, E)
-            ## TEMP BATCH SIZE
-            s_enc = s.unsqueeze(0).permute(1, 0, 2)
-            act = self.act(s_enc)
-            s1, r, d, _ = self.env.step(act)
-            self.mem_buffer.rewards.append(r)
-            self.mem_buffer.done.append(d)
-            if d:
-                s1, mask = self.env.reset()
-                continue
-            advantages = self.calc_advantages()
+        for ep in episodes:
+            ep_rew = []
+
+            for t in timesteps:
+                s = s1
+                ## (S, N, E)
+                ## TEMP BATCH SIZE
+                s_enc = s.unsqueeze(0).permute(1, 0, 2)
+                act = self.act(s_enc)
+                s1, r, d, _ = self.env.step(act)
+                ep_rew.append(r)
+                self.mem_buffer.done.append(d)
+                if d:
+                    s1, mask = self.env.reset()
+                    break
+
+            self.mem_buffer.rewards.append(ep_rew)
+            self.mem_buffer.ep_lengths.append(t+1)
+
+
 
     def calc_advantages(self):
 

@@ -2,6 +2,7 @@ class MemBuffer:
 
     observations = []
     actions      = []
+    action_probs = []
     rewards      = []
     done         = []
     masks        = []

@@ -79,7 +79,7 @@ class PPOAgent(BaseAgent):
         # Better gradient than div
         r_t = torch.exp(probs - probs_old) * A_t
         r_t_c = torch.clamp(r_t, min=1 - self.eps_c, max=1 + self.eps_c) * A_t
-        return -torch.min(r_t, r_t_c)
+        return torch.min(r_t, r_t_c)
 
     def calc_advantages(self):
 

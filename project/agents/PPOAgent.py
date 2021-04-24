@@ -24,10 +24,9 @@ class PPOAgent(BaseAgent):
     def act(self, state):
         with torch.no_grad():
             act_probs_old = self.actor_old(state)
-            act_probs_new = self.actor(state)
             act_dist = Categorical(act_probs_old)
             act = act_dist.sample()
-            return act, act_probs_old, act_probs_new
+            return act, act_probs_old
 
     def eval(self):
         pass
@@ -67,14 +66,13 @@ class PPOAgent(BaseAgent):
                 ## (S, N, E)
                 ## TEMP BATCH SIZE
                 s_enc = s.unsqueeze(0).permute(1, 0, 2)
-                act, act_probs_old, act_probs_new = self.act(s_enc)
+                act, act_probs_old = self.act(s_enc)
                 s1, r, d, _ = self.env.step(act)
 
-                self.mem_buffer.rewards.append(r.detach())
-                self.mem_buffer.done.append(d.detach())
+                self.mem_buffer.rewards.append(r)
+                self.mem_buffer.done.append(d)
                 self.mem_buffer.actions.append(act.detach())
                 self.mem_buffer.action_probs_old.append(act_probs_old.detach())
-                self.mem_buffer.action_probs_new.append(act_probs_new.detach())
                 self.mem_buffer.observations.append(s_enc.detach())
 
                 # if update_check:
@@ -109,13 +107,16 @@ class PPOAgent(BaseAgent):
         # Better gradient than div
         r_t = torch.exp(probs - probs_old)
         r_t_c = torch.clamp(r_t, min=1 - self.eps_c, max=1 + self.eps_c)
-        return torch.min(r_t * A_t, r_t_c * A_t)
+        return -torch.min(r_t * A_t, r_t_c * A_t)
 
     def update_models(self):
 
+
+
         #TODO: fix gradient problems
-        probs = Variable(torch.stack(self.mem_buffer.action_probs_new), requires_grad=True)
-        probs_old = Variable(torch.stack(self.mem_buffer.action_probs_old), requires_grad=True)
+        states = torch.stack(self.mem_buffer.observations).squeeze(0)
+        probs = self.actor(states)
+        probs_old = torch.stack(self.mem_buffer.action_probs_old)
 
         self.actor_old.load_state_dict(self.actor.state_dict())
 

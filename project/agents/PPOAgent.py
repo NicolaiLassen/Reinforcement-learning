@@ -1,5 +1,4 @@
 import copy
-
 import torch
 from torch.distributions import Categorical
 
@@ -10,16 +9,16 @@ from utils.MemBuffer import MemBuffer
 
 
 class PPOAgent(BaseAgent):
-
     mem_buffer = MemBuffer()
 
-    def __init__(self, env: EnvWrapper, actor, critic, optimizer=None, gamma=0.9):
+    def __init__(self, env: EnvWrapper, actor, critic, optimizer=None, gamma=0.9, eps_c=0.2):
         self.env = env
         self.actor_old = actor
         self.actor = copy.deepcopy(actor)
         self.critic = critic
         self.optimizer = optimizer
         self.gamma = gamma
+        self.eps_c = eps_c
 
     def act(self, state):
         with torch.no_grad():
@@ -29,7 +28,6 @@ class PPOAgent(BaseAgent):
             self.mem_buffer.observations.append(state)
             self.mem_buffer.actions.append(act)
             return act
-
 
     def eval(self):
         pass
@@ -55,7 +53,6 @@ class PPOAgent(BaseAgent):
                     continue
                 r_net = self.critic(s)
 
-
     def rollout(self, timesteps):
 
         s1, mask = self.env.reset()
@@ -76,10 +73,13 @@ class PPOAgent(BaseAgent):
                 continue
         advantages = self.calc_advantages()
 
+    def calc_objective(self, probs, probs_old, advantages):
+        # r_t = torch.exp(probs - probs_old) PROBS RATIO
+        r_t = torch.div(probs, probs_old)
+        r_t_c = torch.clamp(r_t, min=1 - self.eps_c, max=1 + self.eps_c)
+        return -torch.min(r_t * advantages, r_t_c * advantages)
+
     def calc_advantages(self):
-
-
-
 
 
 if __name__ == "__main__":

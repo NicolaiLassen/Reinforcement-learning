@@ -1,5 +1,4 @@
 import copy
-
 import torch
 from torch.distributions import Categorical
 
@@ -10,16 +9,16 @@ from utils.MemBuffer import MemBuffer
 
 
 class PPOAgent(BaseAgent):
-
     mem_buffer = MemBuffer()
 
-    def __init__(self, env: EnvWrapper, actor, critic, optimizer=None, gamma=0.9):
+    def __init__(self, env: EnvWrapper, actor, critic, optimizer=None, gamma=0.9, eps_c=0.2):
         self.env = env
         self.actor_old = actor
         self.actor = copy.deepcopy(actor)
         self.critic = critic
         self.optimizer = optimizer
         self.gamma = gamma
+        self.eps_c = eps_c
 
     def act(self, state):
         with torch.no_grad():
@@ -29,7 +28,6 @@ class PPOAgent(BaseAgent):
             self.mem_buffer.observations.append(state)
             self.mem_buffer.actions.append(act)
             return act
-
 
     def eval(self):
         pass
@@ -54,7 +52,6 @@ class PPOAgent(BaseAgent):
                     s1 = self.env.reset()
                     continue
                 r_net = self.critic(s)
-
 
     def rollout(self, timesteps):
 
@@ -93,7 +90,13 @@ class PPOAgent(BaseAgent):
     def get_state_values(self):
         return [self.critic(state) for state in self.mem_buffer.observations]
 
-
+    def calc_objective(self, probs, probs_old, A_t):
+        # r_t = torch.div(probs, probs_batch) # Paper
+        # https://cs.stackexchange.com/questions/70518/why-do-we-use-the-log-in-gradient-based-reinforcement-algorithms
+        # Better gradient than div
+        r_t = torch.exp(probs - probs_old) * A_t
+        r_t_c = torch.clamp(r_t, min=1 - self.eps_c, max=1 + self.eps_c) * A_t
+        return torch.min(r_t, r_t_c)
 
 if __name__ == "__main__":
     seq_len = 100

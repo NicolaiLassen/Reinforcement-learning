@@ -4,5 +4,5 @@ class BaseAgent:
         raise NotImplementedError
     def eval(self):
         raise NotImplementedError
-    def train(self):
+    def train(self, max_time, max_time_steps):
         raise NotImplementedError

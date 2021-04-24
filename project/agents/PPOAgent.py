@@ -1,5 +1,3 @@
-import gym
-import torch
 from torch.distributions import Categorical
 
 from project.agents.BaseAgent import BaseAgent
@@ -23,12 +21,16 @@ class PPOAgent(BaseAgent):
     def train(self, num_episodes=5, num_steps=100):
         for i in range(num_episodes):
 
-            s1 = self.env.reset()
+            s1, mask = self.env.reset()
 
             for j in range(num_steps):
                 s = s1
-                print(s.shape)
-                act_probs = self.actor(s)
+                ## (S, N, E)
+                ## TEMP BATCH SIZE
+                s_enc = s.unsqueeze(0).permute(1, 0, 2)
+                print(s_enc.shape)
+                print(mask)
+                act_probs = self.actor(s_enc, mask)
                 act_dist = Categorical(act_probs)
                 act = act_dist.sample()
                 frame_seq, buffer, done = self.env.step(act)
@@ -38,9 +40,9 @@ class PPOAgent(BaseAgent):
                 r_net = self.critic(s)
 
 
-
 if __name__ == "__main__":
     seq_len = 100
+    bach_size = 1
     env_wrapper = EnvWrapper('procgen:procgen-starpilot-v0', seq_len)
 
     actor = PolicyModelEncoder(seq_len, 64, 64, env_wrapper.env.action_space.n)

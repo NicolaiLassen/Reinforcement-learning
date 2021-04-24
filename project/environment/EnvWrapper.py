@@ -26,30 +26,35 @@ class EnvWrapper(gym.Env):
         contains_done = False
         mask = torch.ones(self.seq_len, self.seq_len)
 
-        for i in range(self.seq_len):
-            obs, reward, done, info = self.env.step(action)
-            frame = self.transformer(obs)
-            frame = frame.squeeze().view(-1)
-            seq[i] = frame
-            buf_seq.append((frame, action, reward, done))
-            if done:
-                contains_done = True
-                mask[i] = torch.zeros(self.seq_len)
-                continue
+        # for i in range(self.seq_len):
+        #     obs, reward, done, info = self.env.step(action)
+        #     frame = self.transformer(obs)
+        #     frame = frame.squeeze().view(-1)
+        #     seq[i] = frame
+        #     buf_seq.append((frame, action, reward, done))
+        #     if done:
+        #         contains_done = True
+        #         mask[i] = torch.zeros(self.seq_len)
+        #         continue
 
-        return seq, buf_seq, contains_done
+        obs, reward, done, info = self.env.step(action)
+        frame = self.transformer(obs).view(-1, self.width*self.height)
+        return frame, reward, done, info
 
     def reset(self):
-        obs = self.env.reset()
-        seq = self.__get_Buffer()
-        frame = self.transformer(obs)
-        frame = frame.squeeze().view(-1)
-        for i in range(self.seq_len):
-            seq[i] = frame
+        # obs = self.env.reset()
+        # seq = self.__get_Buffer()
+        # frame = self.transformer(obs)
+        # frame = frame.squeeze().view(-1)
+        # for i in range(self.seq_len):
+        #     seq[i] = frame
+        #
+        # mask = torch.zeros(self.seq_len, self.seq_len)
+        # mask[0] = torch.ones(self.seq_len)
 
-        mask = torch.zeros(self.seq_len, self.seq_len)
-        mask[0] = torch.ones(self.seq_len)
-        return seq, mask
+        obs = self.env.reset()
+        frame = self.transformer(obs).view(-1, self.width*self.height)
+        return frame#, mask
 
     def render(self, **kwargs):
         return self.env.render()

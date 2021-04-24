@@ -6,14 +6,13 @@ from utils.MemBuffer import MemBuffer
 
 
 class EnvWrapper(gym.Env):
-    def __init__(self, environment, step_size=4, width: int = 64, height: int = 64):
+    def __init__(self, environment, seq_len=4, width: int = 64, height: int = 64):
 
         self.width = width
         self.height = height
 
-        self.step_size = step_size
+        self.seq_len = seq_len
         self.env = gym.make(environment)
-        self.mem_buffer = MemBuffer(batch_size=100)
         self.transformer = transforms.Compose([
             transforms.ToPILImage(),
             transforms.Grayscale(),
@@ -25,15 +24,17 @@ class EnvWrapper(gym.Env):
         seq = self.__get_Buffer()
         buf_seq = []
         contains_done = False
+        mask = torch.ones(self.seq_len, self.seq_len)
 
-        for i in range(self.step_size):
+        for i in range(self.seq_len):
             obs, reward, done, info = self.env.step(action)
             frame = self.transformer(obs)
-            frame = frame.squeeze()
+            frame = frame.squeeze().view(-1)
             seq[i] = frame
             buf_seq.append((frame, action, reward, done))
             if done:
                 contains_done = True
+                mask[i] = torch.zeros(self.seq_len)
                 continue
 
         return seq, buf_seq, contains_done
@@ -42,10 +43,16 @@ class EnvWrapper(gym.Env):
         obs = self.env.reset()
         seq = self.__get_Buffer()
         frame = self.transformer(obs)
-        frame = frame.squeeze()
-        for i in range(self.step_size):
+        frame = frame.squeeze().view(-1)
+        for i in range(self.seq_len):
             seq[i] = frame
-        return seq
+
+        mask = torch.zeros(self.seq_len, self.seq_len)
+        mask[0] = torch.ones(self.seq_len)
+        return seq, mask
+
+    def render(self, **kwargs):
+        return self.env.render()
 
     def __get_Buffer(self):
-        return torch.zeros(self.step_size, self.width, self.height)
+        return torch.zeros(self.seq_len, self.width * self.height)

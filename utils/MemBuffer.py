@@ -4,9 +4,10 @@ class MemBuffer:
     actions      = []
     rewards      = []
     done         = []
+    masks        = []
 
-    def add(self, observation, action, reward, done):
-        self.observations.append(observation)
-        self.actions.append(action)
-        self.rewards.append(reward)
-        self.done.append(done)
+    def clear(self):
+        self.observations = []
+        self.actions = []
+        self.rewards = []
+        self.done = []

@@ -28,4 +28,5 @@ class EnvWrapper(gym.Env):
         return seq
 
     def reset(self):
-        return self.env.reset()
+        obs = self.env.reset()
+        return self.transformer(obs)

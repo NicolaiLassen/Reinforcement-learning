@@ -1,9 +1,40 @@
-if __name__ == "__main__":
-    # env = EnvWrapper('procgen:procgen-starpilot-v0', 1)
-    env = gym.make('procgen:procgen-starpilot-v0')
+import os
 
-    actor = PolicyModel(64, 64, env.action_space.n, True)
-    critic = PolicyModel(64, 64, 1, False)
+import torch
+from matplotlib import pyplot as plt
 
-    actorCritic = PPOAgent(env, actor, critic)
-    actorCritic.train()
+from project.agents.PPO import PPO
+from project.models.ActorCritic import ActorCritic
+from project.environment.EnvWrapper import EnvWrapper
+from project.models.PolicyModel import PolicyModel
+
+# os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+
+if __name__ == '__main__':
+    # Hyperparameters
+    step_size = 4
+
+    # Environment initialization
+    env = EnvWrapper('procgen:procgen-starpilot-v0', step_size)
+
+    actor = PolicyModel(width=64, action_dim=env.env.action_space.n)
+    ## TODO could be smaller network
+    critic = PolicyModel(width=64, action_dim=1)
+
+    episodes = 1000
+    learning_rate = 0.005
+
+    optimizer = torch.optim.Adam([
+        {'params': actor.parameters(), 'lr': learning_rate},
+        {'params': critic.parameters(), 'lr': learning_rate}
+    ])
+
+    obs = env.reset()
+    agent = ActorCritic(env, actor, critic, optimizer)
+
+    for i in range(episodes):
+
+        obs, reward, done, _ = env.step(env.env.action_space.sample())
+        #agent.act(obs)
+        if done:
+            break

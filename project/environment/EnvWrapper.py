@@ -19,4 +19,5 @@ class EnvWrapper(gym.Env):
         return frame, reward, done, info
 
     def reset(self):
-        return self.env.reset()
+        obs = self.env.reset()
+        return self.transformer(obs)

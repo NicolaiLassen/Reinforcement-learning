@@ -3,11 +3,12 @@ import torch
 from torch.distributions import Categorical
 
 from project.agents.BaseAgent import BaseAgent
+from project.environment.EnvWrapper import EnvWrapper
 from project.models.policy_models import PolicyModelEncoder, PolicyModel
 
 
 class PPOAgent(BaseAgent):
-    def __init__(self, env: gym.Env, actor, critic, optimizer=None):
+    def __init__(self, env: EnvWrapper, actor, critic, optimizer=None):
         self.env = env
         self.actor = actor
         self.critic = critic
@@ -27,7 +28,6 @@ class PPOAgent(BaseAgent):
 
             for j in range(num_steps):
                 s = s1
-                s = torch.from_numpy(s).permute(2, 1, 0).to(torch.float)
                 act_probs = self.actor(s)
                 act_dist = Categorical(act_probs)
                 act = act_dist.sample()
@@ -42,11 +42,11 @@ class PPOAgent(BaseAgent):
 
 
 if __name__ == "__main__":
-    # env = EnvWrapper('procgen:procgen-starpilot-v0', 1)
-    env = gym.make('procgen:procgen-starpilot-v0')
+    seq_len = 1
+    env_wrapper = EnvWrapper('procgen:procgen-starpilot-v0', seq_len)
 
-    actor = PolicyModelEncoder(3, 64, 64, env.action_space.n)
-    critic = PolicyModel(3, 64, 64, 1)
+    actor = PolicyModelEncoder(seq_len, 64, 64, env_wrapper.env.action_space.n)
+    critic = PolicyModel(seq_len, 64, 64, 1)
 
-    agent = PPOAgent(env, actor, critic)
+    agent = PPOAgent(env_wrapper, actor, critic)
     agent.train()

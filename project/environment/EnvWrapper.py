@@ -13,7 +13,7 @@ class EnvWrapper(gym.Env):
 
         self.step_size = step_size
         self.env = gym.make(environment)
-        self.mem_buffer = MemBuffer(batch_size=self.step_size)
+        self.mem_buffer = MemBuffer(batch_size=100)
         self.transformer = transforms.Compose([
             transforms.ToPILImage(),
             transforms.Grayscale(),

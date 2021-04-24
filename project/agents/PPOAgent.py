@@ -111,9 +111,6 @@ class PPOAgent(BaseAgent):
 
     def update_models(self):
 
-
-
-        #TODO: fix gradient problems
         states = torch.stack(self.mem_buffer.observations).squeeze(0)
         probs = self.actor(states)
         probs_old = torch.stack(self.mem_buffer.action_probs_old)

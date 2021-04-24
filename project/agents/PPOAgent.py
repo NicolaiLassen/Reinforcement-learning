@@ -5,9 +5,13 @@ from torch.distributions import Categorical
 from project.agents.BaseAgent import BaseAgent
 from project.environment.EnvWrapper import EnvWrapper
 from project.models.policy_models import PolicyModelEncoder, PolicyModel
+from utils.MemBuffer import MemBuffer
 
 
 class PPOAgent(BaseAgent):
+
+    mem_buffer = MemBuffer()
+
     def __init__(self, env: EnvWrapper, actor, critic, optimizer=None, gamma=0.9):
         self.env = env
         self.actor = actor
@@ -52,6 +56,12 @@ class PPOAgent(BaseAgent):
             disc_rewards.append(self.gamma*running_rew + reward)
 
         return disc_rewards
+
+    def rollout(self):
+        states = []
+        actions = []
+        rewards = []
+
 
 if __name__ == "__main__":
     seq_len = 4

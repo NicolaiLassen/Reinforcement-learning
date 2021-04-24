@@ -3,10 +3,8 @@ import os
 import torch
 from matplotlib import pyplot as plt
 
-from project.agents.PPO import PPO
-from project.models.ActorCritic import ActorCritic
 from project.environment.EnvWrapper import EnvWrapper
-from project.models.PolicyModel import PolicyModel
+from project.models.policy_models import PolicyModel
 
 # os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 

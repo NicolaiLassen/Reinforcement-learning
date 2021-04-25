@@ -24,6 +24,8 @@ if __name__ == "__main__":
         {'params': critic.parameters(), 'lr': lr_critic}
     ])
 
+    print(actor)
+    print(critic)
     agent = PPOAgent(env_wrapper, actor, critic, optimizer)
     # TODO: More and smaller batches
     agent.train(200, 100000)

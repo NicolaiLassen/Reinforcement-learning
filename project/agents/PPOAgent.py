@@ -21,7 +21,7 @@ class PPOAgent(BaseAgent):
                  actor: nn.Module,
                  critic: nn.Module,
                  optimizer: optim.Optimizer,
-                 n_acc_gradient=5,
+                 n_acc_gradient=10,
                  gamma=0.9,
                  eps_c=0.2,
                  n_max_times_update=1):
@@ -138,4 +138,4 @@ if __name__ == "__main__":
 
     agent = PPOAgent(env_wrapper, actor, critic, optimizer)
     # TODO: More and smaller batches
-    agent.train(100, 100000)
+    agent.train(400, 100000)

@@ -4,12 +4,14 @@ from torchvision import transforms
 
 ## TODO TAKE BATCH OF FRAMES 4-8
 class EnvWrapper(gym.Env):
-    def __init__(self, environment, seq_len=4, width: int = 64, height: int = 64):
+    def __init__(self, environment, seq_len=4, width: int = 64, height: int = 64, frameskip: int = 60):
         self.width = width
         self.height = height
 
         self.seq_len = seq_len
         self.env = gym.make(environment)
+        self.env.frameskip = frameskip
+
         self.transformer = transforms.Compose([
             transforms.ToPILImage(),
             transforms.Grayscale(),

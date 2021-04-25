@@ -14,7 +14,7 @@ from utils.MemBuffer import MemBuffer
 class PPOAgent(BaseAgent):
     mem_buffer = MemBuffer()
 
-    def __init__(self, env: EnvWrapper, actor, critic, optimizer, accumulate_gradient=10, gamma=0.9, eps_c=0.2,
+    def __init__(self, env: EnvWrapper, actor, critic, optimizer, accumulate_gradient=2, gamma=0.9, eps_c=0.2,
                  n_max_times_update=1):
         self.env = env
         self.actor = actor
@@ -59,10 +59,9 @@ class PPOAgent(BaseAgent):
 
         return action.item()
 
-    def eval(self, mem_states, mem_actions):
-        with torch.no_grad():
-            mem_states = mem_states.permute(1, 0, 2)
-            action_prob = self.actor(mem_states)
+    def evaluate(self, mem_states, mem_actions):
+        mem_states = mem_states.permute(1, 0, 2)
+        action_prob = self.actor(mem_states)
         dist = Categorical(action_prob)
         action_log_prob = dist.log_prob(mem_actions)
         state_values = self.critic(mem_states)
@@ -84,6 +83,7 @@ class PPOAgent(BaseAgent):
     def __update(self):
 
         # FIX GRAD
+        print(self.mem_buffer.rewards)
         mem_states = Variable(torch.stack(self.mem_buffer.states, dim=0).squeeze(1), requires_grad=True)
         mem_log_prob = Variable(torch.stack(self.mem_buffer.action_log_prob, dim=0), requires_grad=True)
         mem_actions = torch.stack(self.mem_buffer.actions, dim=0)
@@ -93,12 +93,11 @@ class PPOAgent(BaseAgent):
 
         # ACC Gradient
         for _ in range(self.accumulate_gradient):
-            log_prob, state_values = self.eval(mem_states, mem_actions)
+            log_prob, state_values = self.evaluate(mem_states, mem_actions)
             advantages = self.__calc_advantages(state_values)
 
             self.optimizer.zero_grad()
             loss = self.__calc_objective(log_prob, mem_log_prob, advantages)
-            print(loss)
             loss.mean().backward()
             self.optimizer.step()
 
@@ -131,4 +130,4 @@ if __name__ == "__main__":
     ])
 
     agent = PPOAgent(env_wrapper, actor, critic, optimizer)
-    agent.train(400, 10000)
+    agent.train(4000, 10000)

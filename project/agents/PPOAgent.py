@@ -118,4 +118,4 @@ if __name__ == "__main__":
 
     # USE CUDA
     agent = PPOAgent(env_wrapper, actor, critic, optimizer, env_wrapper.env.action_space.n)
-    agent.train(100, 100000)
+    agent.train(400, 100000)

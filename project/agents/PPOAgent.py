@@ -129,5 +129,6 @@ if __name__ == "__main__":
         {'params': critic.parameters(), 'lr': lr_critic}
     ])
 
+    # USE CUDA
     agent = PPOAgent(env_wrapper, actor, critic, optimizer)
-    agent.train(4000, 100000)
+    agent.train(400, 100000)

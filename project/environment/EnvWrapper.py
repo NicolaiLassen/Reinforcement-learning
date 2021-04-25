@@ -25,6 +25,7 @@ class EnvWrapper(gym.Env):
 
     def step(self, action):
         obs = None
+        info = None # DO WE NEED THIS
         acc_reward = 0
         acc_done = False,
         # HACK TO FOR NOW TODO
@@ -33,12 +34,11 @@ class EnvWrapper(gym.Env):
             acc_reward += reward
             if done and (not acc_done):  # fast hack if it overlaps with done run # TODO
                 acc_done = done
-
         # PLOT HOW THIS IS GOING
         # plt.imshow(obs)
         # plt.show()
         frame = self.transformer(obs).view(-1, self.width * self.height)
-        return frame, reward, done, info
+        return frame, acc_reward, acc_done, info
 
     def reset(self):
         obs = self.env.reset()

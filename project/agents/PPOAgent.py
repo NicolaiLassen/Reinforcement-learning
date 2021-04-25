@@ -41,7 +41,6 @@ class PPOAgent(BaseAgent):
                 # mask = []  # self.mem_buffer.masks.append(mask)
                 if t % update_every == 0:
                     self.update()
-        return
 
     def act(self, s):
         with torch.no_grad():

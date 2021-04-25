@@ -1,146 +1,133 @@
 import copy
+
 import torch
-from torch.autograd import Variable
 from torch.distributions import Categorical
 
 from project.agents.BaseAgent import BaseAgent
 from project.environment.EnvWrapper import EnvWrapper
 from project.models.policy_models import PolicyModelEncoder, PolicyModel
 from utils.MemBuffer import MemBuffer
+from utils.normalize_dist import normalize_dist
 
 
 class PPOAgent(BaseAgent):
     mem_buffer = MemBuffer()
 
-    def __init__(self, env: EnvWrapper, actor, critic, optimizer=None, gamma=0.9, eps_c=0.2):
+    def __init__(self, env: EnvWrapper, actor, critic, optimizer, accumulate_gradient=10, gamma=0.9, eps_c=0.2,
+                 n_max_times_update=1):
         self.env = env
-        self.actor_old = copy.deepcopy(actor)
         self.actor = actor
+        self.actor_old = copy.deepcopy(actor)
+        self.actor_old.load_state_dict(actor.state_dict())
         self.critic = critic
         self.optimizer = optimizer
+        self.accumulate_gradient = accumulate_gradient
         self.gamma = gamma
         self.eps_c = eps_c
-
-    def act(self, state):
-        with torch.no_grad():
-            act_probs_old = self.actor_old(state)
-            act_dist = Categorical(act_probs_old)
-            act = act_dist.sample()
-            return act, act_probs_old
-
-    def eval(self):
-        pass
-
-    # def train(self, num_episodes=5, num_steps=100):
-    #     for i in range(num_episodes):
-    #
-    #         s1, mask = self.env.reset()
-    #
-    #         for j in range(num_steps):
-    #             s = s1
-    #             ## (S, N, E)
-    #             ## TEMP BATCH SIZE
-    #             s_enc = s.unsqueeze(0).permute(1, 0, 2)
-    #             print(s_enc.shape)
-    #             print(mask)
-    #             act_probs = self.actor(s_enc, mask)
-    #             act_dist = Categorical(act_probs)
-    #             act = act_dist.sample()
-    #             frame_seq, buffer, done = self.env.step(act)
-    #             if done:
-    #                 s1 = self.env.reset()
-    #                 continue
-    #             r_net = self.critic(s)
+        self.n_max_times_update = n_max_times_update
 
     def train(self, max_time, max_time_steps):
-
+        update_every = max_time * self.n_max_times_update
         t = 0
-
         while t < max_time_steps:
-
             s1 = self.env.reset()
-
-            for ep_t in range(max_time):
+            for ep_t in range(max_time + 1):
                 t += 1
                 s = s1
-                ## (S, N, E)
-                ## TEMP BATCH SIZE
-                s_enc = s.unsqueeze(0).permute(1, 0, 2)
-                act, act_probs_old = self.act(s_enc)
-                s1, r, d, _ = self.env.step(act)
-
+                selected_action = self.act(s)
+                s1, r, d, _ = self.env.step(selected_action)
                 self.mem_buffer.rewards.append(r)
                 self.mem_buffer.done.append(d)
-                self.mem_buffer.actions.append(act.detach())
-                self.mem_buffer.action_probs_old.append(act_probs_old.detach())
-                self.mem_buffer.observations.append(s_enc.detach())
+                # mask = []  # self.mem_buffer.masks.append(mask)
+                if t % update_every == 0:
+                    self.update()
+        return
 
-                # if update_check:
-                self.update_models()
+    def act(self, s):
+        with torch.no_grad():
+            s = s.unsqueeze(0).permute(1, 0, 2)
+            action_logs_prob = self.actor_old(s)
 
-                if d:
-                    break
-        print("reward: " + torch.stack(self.mem_buffer.rewards).sum())
+        action_dist = Categorical(action_logs_prob)
+        action = action_dist.sample()
+        action_dist_log_prob = action_dist.log_prob(action)
+        action = action.detach()
+        action_dist_log_prob = action_dist_log_prob.detach()
 
+        self.mem_buffer.states.append(s)
+        self.mem_buffer.actions.append(action)
+        self.mem_buffer.action_log_prob.append(action_dist_log_prob)
 
+        return action.item()
 
-    def calc_advantages(self):
+    def eval(self, mem_state, mem_actions):
+        with torch.no_grad():
+            mem_state = mem_state.unsqueeze(0).permute(1, 0, 2)
+            print(mem_state.shape)
+            action_prob = self.actor(mem_state)
+        dist = Categorical(action_prob)
+        action_log_prob = dist.log_prob(mem_actions)
+        state_values = self.critic(mem_state)
+        return action_log_prob, state_values
 
-        gamma = self.gamma
+    def calc_advantages(self, state_values):
         discounted_rewards = []
         running_reward = 0
-
-        for r in reversed(self.mem_buffer.rewards):
-            running_reward += r + running_reward*gamma
-            gamma *= gamma
+        for r, d in zip(reversed(self.mem_buffer.rewards), reversed(self.mem_buffer.done)):
+            if d:
+                discounted_rewards.append(0)
+                continue
+            running_reward = r + (running_reward * self.gamma)
             discounted_rewards.append(running_reward)
 
-        state_values = self.get_state_values()
+        # eval state value
+        return normalize_dist(torch.tensor(discounted_rewards, dtype=torch.float32)) - state_values.detach()
 
-        return torch.tensor([(d - sv) for d, sv in zip(discounted_rewards, state_values)])
+    def update(self):
 
-    def get_state_values(self):
-        return [self.critic(state) for state in self.mem_buffer.observations]
+        mem_states = torch.squeeze(torch.stack(self.mem_buffer.states)).detach()
+        mem_actions = torch.squeeze(torch.stack(self.mem_buffer.actions)).detach()
+        mem_log_prob = torch.squeeze(torch.stack(self.mem_buffer.action_log_prob)).detach()
+        print(mem_states.shape)
+        print(mem_actions.shape)
+        print(mem_log_prob.shape)
 
-    def calc_objective(self, probs, probs_old, A_t):
-        r_t = torch.exp(probs - probs_old)
+        # ACC Gradient
+        for _ in range(self.accumulate_gradient):
+            log_prob, state_values = self.eval(mem_states, mem_actions)
+            advantages = self.calc_advantages(state_values)
+
+            self.optimizer.zero_grad()
+            self.calc_objective(log_prob, mem_log_prob, advantages).mean().backward()
+            self.optimizer.step()
+
+        self.actor_old.load_state_dict(self.actor.state_dict())
+        self.mem_buffer.clear()
+
+    def calc_objective(self, theta_log_probs, theta_log_probs_old, A_t):
+        r_t = torch.exp(theta_log_probs - theta_log_probs_old)
         r_t_c = torch.clamp(r_t, min=1 - self.eps_c, max=1 + self.eps_c)
         return -torch.min(r_t * A_t, r_t_c * A_t)
 
-    def update_models(self):
-
-        states = torch.stack(self.mem_buffer.observations).squeeze(0)
-        probs = self.actor(states)
-        probs_old = torch.stack(self.mem_buffer.action_probs_old)
-
-        self.actor_old.load_state_dict(self.actor.state_dict())
-
-        self.optimizer.zero_grad()
-        advantages = self.calc_advantages()
-        loss = self.calc_objective(probs, probs_old, advantages).mean()
-        print(loss)
-        loss.backward()
-        optimizer.step()
-
-
-
-        self.mem_buffer.clear()
 
 if __name__ == "__main__":
-
     seq_len = 1
     bach_size = 1
-    learning_rate = 0.005
+    width = 64
+    height = 64
+
+    lr_actor = 0.0003
+    lr_critic = 0.001
 
     env_wrapper = EnvWrapper('procgen:procgen-starpilot-v0', seq_len)
 
-    actor = PolicyModelEncoder(seq_len, 64, 64, env_wrapper.env.action_space.n)
-    critic = PolicyModel(seq_len, 64, 64, 1)
+    actor = PolicyModelEncoder(seq_len, width, height, env_wrapper.env.action_space.n)
+    critic = PolicyModel(seq_len, width, height)
 
     optimizer = torch.optim.Adam([
-        {'params': actor.parameters(), 'lr': learning_rate},
-        {'params': critic.parameters(), 'lr': learning_rate}
+        {'params': actor.parameters(), 'lr': lr_actor},
+        {'params': critic.parameters(), 'lr': lr_critic}
     ])
 
     agent = PPOAgent(env_wrapper, actor, critic, optimizer)
-    agent.train(10, 100)
+    agent.train(400, 10000)

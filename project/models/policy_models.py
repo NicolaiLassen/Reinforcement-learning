@@ -2,7 +2,7 @@ import torch.nn as nn
 
 
 class PolicyModel(nn.Module):
-    def __init__(self, env_seq: int, width: int, height: int, action_dim: int):
+    def __init__(self, env_seq: int, width: int, height: int, action_dim: int = 1):
         super(PolicyModel, self).__init__()
 
         self.width = width

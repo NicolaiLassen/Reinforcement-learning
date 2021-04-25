@@ -1,18 +1,21 @@
 class MemBuffer:
 
-    observations     = []
-    actions          = []
-    action_probs_old = []
-    rewards          = []
-    done             = []
-    masks            = []
-    ep_lengths       = []
+    def __init__(self):
+        self.states = []
+        self.rewards = []
+        self.actions = []
+        self.action_log_prob = []
+        self.done = []
+        self.ep_lengths = []
+
+        self.masks = []
 
     def clear(self):
-        self.observations = []
+        self.states = []
         self.actions = []
-        self.action_probs_old = []
+        self.action_log_prob = []
         self.rewards = []
         self.done = []
-        self.masks = []
         self.ep_lengths = []
+
+        self.masks = []

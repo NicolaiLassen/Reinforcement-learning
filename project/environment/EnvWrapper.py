@@ -1,13 +1,10 @@
 import gym
-import torch
 from torchvision import transforms
 
-from utils.MemBuffer import MemBuffer
 
-
+## TODO TAKE BATCH OF FRAMES 4-8
 class EnvWrapper(gym.Env):
     def __init__(self, environment, seq_len=4, width: int = 64, height: int = 64):
-
         self.width = width
         self.height = height
 
@@ -21,43 +18,14 @@ class EnvWrapper(gym.Env):
         ])
 
     def step(self, action):
-        seq = self.__get_Buffer()
-        buf_seq = []
-        contains_done = False
-        mask = torch.ones(self.seq_len, self.seq_len)
-
-        # for i in range(self.seq_len):
-        #     obs, reward, done, info = self.env.step(action)
-        #     frame = self.transformer(obs)
-        #     frame = frame.squeeze().view(-1)
-        #     seq[i] = frame
-        #     buf_seq.append((frame, action, reward, done))
-        #     if done:
-        #         contains_done = True
-        #         mask[i] = torch.zeros(self.seq_len)
-        #         continue
-
         obs, reward, done, info = self.env.step(action)
-        frame = self.transformer(obs).view(-1, self.width*self.height)
+        frame = self.transformer(obs).view(-1, self.width * self.height)
         return frame, reward, done, info
 
     def reset(self):
-        # obs = self.env.reset()
-        # seq = self.__get_Buffer()
-        # frame = self.transformer(obs)
-        # frame = frame.squeeze().view(-1)
-        # for i in range(self.seq_len):
-        #     seq[i] = frame
-        #
-        # mask = torch.zeros(self.seq_len, self.seq_len)
-        # mask[0] = torch.ones(self.seq_len)
-
         obs = self.env.reset()
-        frame = self.transformer(obs).view(-1, self.width*self.height)
-        return frame#, mask
+        frame = self.transformer(obs).view(-1, self.width * self.height)
+        return frame
 
     def render(self, **kwargs):
         return self.env.render()
-
-    def __get_Buffer(self):
-        return torch.zeros(self.seq_len, self.width * self.height)

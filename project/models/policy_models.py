@@ -8,16 +8,19 @@ class PolicyModel(nn.Module):
         self.width = width
         self.height = height
 
-        self.fc_1 = nn.Linear(width * height, height)
-        self.fc_out = nn.Linear(env_seq * height, action_dim)
+        self.fc_1 = nn.Linear(width * height, width * height)
+        self.fc_2 = nn.Linear(width * height, height)
+        self.fc_out = nn.Linear(height, action_dim)
         self.activation = nn.ReLU()
 
     def forward(self, x):
         out = self.fc_1(x)
         out = self.activation(out)
-        out = out.view(-1)
-        out = self.fc_out(out)
-        return out
+        out = self.fc_1(out)
+        out = self.activation(out)
+        out = self.fc_2(out)
+        out = self.activation(out)
+        return self.fc_out(out)
 
 
 class PolicyModelEncoder(nn.Module):
@@ -27,18 +30,17 @@ class PolicyModelEncoder(nn.Module):
         self.width = width
         self.height = height
 
-        self.encoder_layer = nn.TransformerEncoderLayer(d_model=width * height, nhead=2)
+        self.encoder_layer = nn.TransformerEncoderLayer(d_model=width * height, nhead=4)
         self.encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=3)
 
         self.fc_1 = nn.Linear(width * height, height)
-        self.fc_out = nn.Linear(env_seq * height, action_dim)
+        self.fc_out = nn.Linear(height, action_dim)
         self.activation = nn.ReLU()
-        self.log_softmax = nn.LogSoftmax(dim=0)
+        self.log_softmax = nn.LogSoftmax(dim=-1)
 
     def forward(self, x, mask=None):
         out = self.encoder(x, mask)
         out = self.fc_1(out)
         out = self.activation(out)
-        out = out.view(-1)
         out = self.fc_out(out)
         return self.log_softmax(out)

@@ -1,15 +1,16 @@
 import copy
 
 import torch
+from torch.autograd import Variable
 from torch.distributions import Categorical
 
 from project.agents.BaseAgent import BaseAgent
 from project.environment.EnvWrapper import EnvWrapper
 from project.models.policy_models import PolicyModelEncoder, PolicyModel
 from utils.MemBuffer import MemBuffer
-from utils.normalize_dist import normalize_dist
 
 
+## TODO ENV BATCH FRAMES
 class PPOAgent(BaseAgent):
     mem_buffer = MemBuffer()
 
@@ -40,36 +41,34 @@ class PPOAgent(BaseAgent):
                 self.mem_buffer.done.append(d)
                 # mask = []  # self.mem_buffer.masks.append(mask)
                 if t % update_every == 0:
-                    self.update()
+                    self.__update()
 
-    def act(self, s):
+    def act(self, state_t):
         with torch.no_grad():
-            s = s.unsqueeze(0).permute(1, 0, 2)
-            action_logs_prob = self.actor_old(s)
-
+            state_t = state_t.unsqueeze(0).permute(1, 0, 2)
+            action_logs_prob = self.actor_old(state_t)
         action_dist = Categorical(action_logs_prob)
         action = action_dist.sample()
         action_dist_log_prob = action_dist.log_prob(action)
         action = action.detach()
         action_dist_log_prob = action_dist_log_prob.detach()
 
-        self.mem_buffer.states.append(s)
+        self.mem_buffer.states.append(state_t)
         self.mem_buffer.actions.append(action)
         self.mem_buffer.action_log_prob.append(action_dist_log_prob)
 
         return action.item()
 
-    def eval(self, mem_state, mem_actions):
+    def eval(self, mem_states, mem_actions):
         with torch.no_grad():
-            mem_state = mem_state.unsqueeze(0).permute(1, 0, 2)
-            print(mem_state.shape)
-            action_prob = self.actor(mem_state)
+            mem_states = mem_states.permute(1, 0, 2)
+            action_prob = self.actor(mem_states)
         dist = Categorical(action_prob)
         action_log_prob = dist.log_prob(mem_actions)
-        state_values = self.critic(mem_state)
+        state_values = self.critic(mem_states)
         return action_log_prob, state_values
 
-    def calc_advantages(self, state_values):
+    def __calc_advantages(self, state_values):
         discounted_rewards = []
         running_reward = 0
         for r, d in zip(reversed(self.mem_buffer.rewards), reversed(self.mem_buffer.done)):
@@ -80,30 +79,33 @@ class PPOAgent(BaseAgent):
             discounted_rewards.append(running_reward)
 
         # eval state value
-        return normalize_dist(torch.tensor(discounted_rewards, dtype=torch.float32)) - state_values.detach()
+        return torch.tensor(discounted_rewards, dtype=torch.float32) - state_values.detach()
 
-    def update(self):
+    def __update(self):
 
-        mem_states = torch.squeeze(torch.stack(self.mem_buffer.states)).detach()
-        mem_actions = torch.squeeze(torch.stack(self.mem_buffer.actions)).detach()
-        mem_log_prob = torch.squeeze(torch.stack(self.mem_buffer.action_log_prob)).detach()
-        print(mem_states.shape)
-        print(mem_actions.shape)
-        print(mem_log_prob.shape)
+        # FIX GRAD
+        mem_states = Variable(torch.stack(self.mem_buffer.states, dim=0).squeeze(1), requires_grad=True)
+        mem_log_prob = Variable(torch.stack(self.mem_buffer.action_log_prob, dim=0), requires_grad=True)
+        mem_actions = torch.stack(self.mem_buffer.actions, dim=0)
+        # print(mem_states.shape)
+        # print(mem_actions.shape)
+        # print(mem_log_prob.shape)
 
         # ACC Gradient
         for _ in range(self.accumulate_gradient):
             log_prob, state_values = self.eval(mem_states, mem_actions)
-            advantages = self.calc_advantages(state_values)
+            advantages = self.__calc_advantages(state_values)
 
             self.optimizer.zero_grad()
-            self.calc_objective(log_prob, mem_log_prob, advantages).mean().backward()
+            loss = self.__calc_objective(log_prob, mem_log_prob, advantages)
+            print(loss)
+            loss.mean().backward()
             self.optimizer.step()
 
         self.actor_old.load_state_dict(self.actor.state_dict())
         self.mem_buffer.clear()
 
-    def calc_objective(self, theta_log_probs, theta_log_probs_old, A_t):
+    def __calc_objective(self, theta_log_probs, theta_log_probs_old, A_t):
         r_t = torch.exp(theta_log_probs - theta_log_probs_old)
         r_t_c = torch.clamp(r_t, min=1 - self.eps_c, max=1 + self.eps_c)
         return -torch.min(r_t * A_t, r_t_c * A_t)

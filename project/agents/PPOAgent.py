@@ -11,7 +11,7 @@ from utils.MemBuffer import MemBuffer
 
 ## TODO ENV BATCH FRAMES
 class PPOAgent(BaseAgent):
-    mem_buffer: MemBuffer = None
+    mem_buffer: MemBuffer = None  # only used in traning
 
     def __init__(self, env: EnvWrapper, actor, critic, optimizer, action_space_n, accumulate_gradient=2,
                  gamma=0.9, eps_c=0.2,
@@ -29,7 +29,7 @@ class PPOAgent(BaseAgent):
         self.n_max_times_update = n_max_times_update
 
     def train(self, max_time, max_time_steps):
-        self.mem_buffer = MemBuffer(self.action_space_n, max_time)
+        self.mem_buffer = MemBuffer(max_time)  # MemBuffer(self.action_space_n, max_time)
         update_every = max_time * self.n_max_times_update
         t = 0
         while t < max_time_steps:
@@ -39,10 +39,9 @@ class PPOAgent(BaseAgent):
                 s = s1
                 action, log_probs = self.act(s)
                 s1, r, d, _ = self.env.step(action)
-                # TODO
                 self.mem_buffer.set_next(s1, r, action, log_probs, d)
 
-                # mask = []  # self.mem_buffer.masks.append(mask)
+                # TODO: create a mask for done states mask = []  # self.mem_buffer.masks.append(mask)
                 if t % update_every == 0:
                     self.__update()
 
@@ -55,7 +54,7 @@ class PPOAgent(BaseAgent):
         action_dist_log_prob = action_dist.log_prob(action)
         return action.detach().item(), action_dist_log_prob.detach()
 
-    def evaluate(self, mem_states, mem_actions):
+    def __eval(self, mem_states, mem_actions):
         mem_states = mem_states.unsqueeze(0).permute(1, 0, 2)
         action_prob = self.actor(mem_states)
         dist = Categorical(action_prob)
@@ -79,11 +78,10 @@ class PPOAgent(BaseAgent):
 
         # ACC Gradient
         for _ in range(self.accumulate_gradient):
-            log_probs, state_values = self.evaluate(self.mem_buffer.states, self.mem_buffer.actions)
+            log_probs, state_values = self.__eval(self.mem_buffer.states, self.mem_buffer.actions)
             advantages = self.__calc_advantages(state_values)
-
             self.optimizer.zero_grad()
-            loss = self.__calc_objective(log_probs, self.mem_buffer.action_log_probs, advantages).mean()
+            loss = self.__calc_objective(log_probs, self.mem_buffer.action_log_probs, advantages)
             print(loss)
             loss.backward()
             self.optimizer.step()
@@ -94,7 +92,7 @@ class PPOAgent(BaseAgent):
     def __calc_objective(self, theta_log_probs, theta_log_probs_old, A_t):
         r_t = torch.exp(theta_log_probs - theta_log_probs_old)
         r_t_c = torch.clamp(r_t, min=1 - self.eps_c, max=1 + self.eps_c)
-        return -torch.min(r_t * A_t, r_t_c * A_t)
+        return torch.mean(-torch.min(r_t * A_t, r_t_c * A_t))
 
 
 if __name__ == "__main__":
@@ -103,7 +101,7 @@ if __name__ == "__main__":
     width = 64
     height = 64
 
-    lr_actor = 0.0003
+    lr_actor = 0.0005
     lr_critic = 0.001
 
     env_wrapper = EnvWrapper('procgen:procgen-starpilot-v0', seq_len)

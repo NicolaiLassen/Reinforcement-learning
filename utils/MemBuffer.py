@@ -1,12 +1,15 @@
 import torch
 
 
+## class 2DBatchMemBuffer
+
 class MemBuffer:
     ## Current single ep MemBuffer
     t = 0
 
-    def __init__(self, action_dim, max_time=400, width=64, height=64):
-        self.action_dim = action_dim
+    ## Should take all probs not just from dist
+    # Pass in action values
+    def __init__(self, max_time=400, width=64, height=64):
         self.max_length = max_time
         self.width = width
         self.height = height

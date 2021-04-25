@@ -30,6 +30,7 @@ class PolicyModelEncoder(nn.Module):
         self.width = width
         self.height = height
 
+        # Should scale down dims
         self.encoder_layer = nn.TransformerEncoderLayer(d_model=width * height, nhead=2)
         self.encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=3)
 

@@ -44,6 +44,7 @@ class PPOAgent(BaseAgent):
         t = 0
         while t < max_time_steps:
             s1 = self.env.reset()
+            self.save_actor()
             for ep_t in range(max_time + 1):
                 t += 1
                 s = s1
@@ -60,6 +61,13 @@ class PPOAgent(BaseAgent):
         action = action_dist.sample()
         action_dist_log_prob = action_dist.log_prob(action)
         return action.detach().item(), action_dist_log_prob.detach()
+
+    def save_actor(self):
+        torch.save(self.actor_old.state_dict(), "encoder_actor.ckpt")
+
+    def load_actor(self, path):
+        self.actor.load_state_dict(torch.load(path))
+        self.actor_old.load_state_dict(torch.load(path))
 
     def __eval(self):
         # TODO: BATCH SIZE IS 1 at the moment
@@ -130,4 +138,4 @@ if __name__ == "__main__":
 
     agent = PPOAgent(env_wrapper, actor, critic, optimizer)
     # TODO: More and smaller batches
-    agent.train(200, 100000)
+    agent.train(100, 100000)

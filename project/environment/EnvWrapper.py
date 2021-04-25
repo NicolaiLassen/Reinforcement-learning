@@ -8,7 +8,7 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 ## TODO TAKE BATCH OF FRAMES 4-8
 class EnvWrapper(gym.Env):
-    def __init__(self, environment, seq_len=4, width: int = 64, height: int = 64, frameskip: int = 16):
+    def __init__(self, environment, seq_len=4, width: int = 64, height: int = 64, frameskip: int = 8):
         self.width = width
         self.height = height
 
@@ -25,9 +25,9 @@ class EnvWrapper(gym.Env):
 
     def step(self, action):
         obs = None
-        info = None # DO WE NEED THIS
+        info = None  # DO WE NEED THIS
         acc_reward = 0
-        acc_done = False,
+        acc_done = False
         # HACK TO FOR NOW TODO
         for i in range(4):
             obs, reward, done, info = self.env.step(action)

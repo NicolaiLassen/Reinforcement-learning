@@ -24,10 +24,16 @@ class EnvWrapper(gym.Env):
         ])
 
     def step(self, action):
-        obs, reward, done, info = self.env.step(action)
-        # HACK TO FOR NOW
+        obs = None
+        acc_reward = 0
+        acc_done = False,
+        # HACK TO FOR NOW TODO
         for i in range(4):
             obs, reward, done, info = self.env.step(action)
+            acc_reward += reward
+            if done and (not acc_done):  # fast hack if it overlaps with done run # TODO
+                acc_done = done
+
         # PLOT HOW THIS IS GOING
         # plt.imshow(obs)
         # plt.show()

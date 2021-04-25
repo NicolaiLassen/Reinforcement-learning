@@ -1,7 +1,6 @@
 import copy
 
 import torch
-from torch.autograd import Variable
 from torch.distributions import Categorical
 
 from project.agents.BaseAgent import BaseAgent
@@ -12,9 +11,10 @@ from utils.MemBuffer import MemBuffer
 
 ## TODO ENV BATCH FRAMES
 class PPOAgent(BaseAgent):
-    mem_buffer = MemBuffer()
+    mem_buffer: MemBuffer = None
 
-    def __init__(self, env: EnvWrapper, actor, critic, optimizer, accumulate_gradient=2, gamma=0.9, eps_c=0.2,
+    def __init__(self, env: EnvWrapper, actor, critic, optimizer, action_space_n, accumulate_gradient=2,
+                 gamma=0.9, eps_c=0.2,
                  n_max_times_update=1):
         self.env = env
         self.actor = actor
@@ -25,9 +25,11 @@ class PPOAgent(BaseAgent):
         self.accumulate_gradient = accumulate_gradient
         self.gamma = gamma
         self.eps_c = eps_c
+        self.action_space_n = action_space_n
         self.n_max_times_update = n_max_times_update
 
     def train(self, max_time, max_time_steps):
+        self.mem_buffer = MemBuffer(self.action_space_n, max_time)
         update_every = max_time * self.n_max_times_update
         t = 0
         while t < max_time_steps:
@@ -35,37 +37,31 @@ class PPOAgent(BaseAgent):
             for ep_t in range(max_time + 1):
                 t += 1
                 s = s1
-                selected_action = self.act(s)
-                s1, r, d, _ = self.env.step(selected_action)
-                self.mem_buffer.rewards.append(r)
-                self.mem_buffer.done.append(d)
+                action, log_probs = self.act(s)
+                s1, r, d, _ = self.env.step(action)
+                # TODO
+                self.mem_buffer.set_next(s1, r, action, log_probs, d)
+
                 # mask = []  # self.mem_buffer.masks.append(mask)
                 if t % update_every == 0:
                     self.__update()
 
-    def act(self, state_t):
+    def act(self, state):
         with torch.no_grad():
-            state_t = state_t.unsqueeze(0).permute(1, 0, 2)
-            action_logs_prob = self.actor_old(state_t)
+            state = state.unsqueeze(0).permute(1, 0, 2)
+            action_logs_prob = self.actor_old(state)
         action_dist = Categorical(action_logs_prob)
         action = action_dist.sample()
         action_dist_log_prob = action_dist.log_prob(action)
-        action = action.detach()
-        action_dist_log_prob = action_dist_log_prob.detach()
-
-        self.mem_buffer.states.append(state_t)
-        self.mem_buffer.actions.append(action)
-        self.mem_buffer.action_log_prob.append(action_dist_log_prob)
-
-        return action.item()
+        return action.detach().item(), action_dist_log_prob.detach()
 
     def evaluate(self, mem_states, mem_actions):
-        mem_states = mem_states.permute(1, 0, 2)
+        mem_states = mem_states.unsqueeze(0).permute(1, 0, 2)
         action_prob = self.actor(mem_states)
         dist = Categorical(action_prob)
-        action_log_prob = dist.log_prob(mem_actions)
+        action_log_probs = dist.log_prob(mem_actions)
         state_values = self.critic(mem_states)
-        return action_log_prob, state_values
+        return action_log_probs, state_values
 
     def __calc_advantages(self, state_values):
         discounted_rewards = []
@@ -77,28 +73,19 @@ class PPOAgent(BaseAgent):
             running_reward = r + (running_reward * self.gamma)
             discounted_rewards.append(running_reward)
 
-        # eval state value
         return torch.tensor(discounted_rewards, dtype=torch.float32) - state_values.detach()
 
     def __update(self):
 
-        # FIX GRAD
-        print(self.mem_buffer.rewards)
-        mem_states = Variable(torch.stack(self.mem_buffer.states, dim=0).squeeze(1), requires_grad=True)
-        mem_log_prob = Variable(torch.stack(self.mem_buffer.action_log_prob, dim=0), requires_grad=True)
-        mem_actions = torch.stack(self.mem_buffer.actions, dim=0)
-        # print(mem_states.shape)
-        # print(mem_actions.shape)
-        # print(mem_log_prob.shape)
-
         # ACC Gradient
         for _ in range(self.accumulate_gradient):
-            log_prob, state_values = self.evaluate(mem_states, mem_actions)
+            log_probs, state_values = self.evaluate(self.mem_buffer.states, self.mem_buffer.actions)
             advantages = self.__calc_advantages(state_values)
 
             self.optimizer.zero_grad()
-            loss = self.__calc_objective(log_prob, mem_log_prob, advantages)
-            loss.mean().backward()
+            loss = self.__calc_objective(log_probs, self.mem_buffer.action_log_probs, advantages).mean()
+            print(loss)
+            loss.backward()
             self.optimizer.step()
 
         self.actor_old.load_state_dict(self.actor.state_dict())
@@ -130,5 +117,5 @@ if __name__ == "__main__":
     ])
 
     # USE CUDA
-    agent = PPOAgent(env_wrapper, actor, critic, optimizer)
-    agent.train(400, 100000)
+    agent = PPOAgent(env_wrapper, actor, critic, optimizer, env_wrapper.env.action_space.n)
+    agent.train(100, 100000)

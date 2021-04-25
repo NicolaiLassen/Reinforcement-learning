@@ -18,7 +18,7 @@ class MemBuffer:
         self.rewards = torch.zeros(self.max_length, dtype=torch.float)
         self.actions = torch.zeros(self.max_length, dtype=torch.int)
         self.action_log_probs = torch.zeros(self.max_length, dtype=torch.float)
-        self.done = torch.zeros(self.max_length, dtype=torch.bool)
+        self.done = torch.zeros(self.max_length, dtype=torch.int)
         self.masks = torch.zeros(self.max_length, self.max_length)
 
     def set_next(self, state, reward, action, action_log_prob, done, mask=None):
@@ -29,7 +29,7 @@ class MemBuffer:
         self.rewards[self.t] = float(reward)
         self.actions[self.t] = action
         self.action_log_probs[self.t] = action_log_prob
-        self.done[self.t] = bool(done)
+        self.done[self.t] = int(done)
         if mask is not None:
             self.masks[self.t] = mask
         self.t += 1
@@ -40,7 +40,7 @@ class MemBuffer:
         self.rewards = torch.zeros(self.max_length, dtype=torch.float)
         self.actions = torch.zeros(self.max_length, dtype=torch.int)
         self.action_log_probs = torch.zeros(self.max_length, dtype=torch.float)
-        self.done = torch.zeros(self.max_length, dtype=torch.bool)
+        self.done = torch.zeros(self.max_length, dtype=torch.int)
         self.masks = torch.zeros(self.max_length, self.max_length)
 
     def get_mask(self, skip=False):

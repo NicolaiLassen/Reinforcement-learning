@@ -1,14 +1,14 @@
+import os
+
 import gym
 from torchvision import transforms
-import matplotlib.pyplot as plt
 
-import os
-os.environ['KMP_DUPLICATE_LIB_OK']='True'
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
 ## TODO TAKE BATCH OF FRAMES 4-8
 class EnvWrapper(gym.Env):
-    def __init__(self, environment, seq_len=4, width: int = 64, height: int = 64, frameskip: int = 30):
+    def __init__(self, environment, seq_len=4, width: int = 64, height: int = 64, frameskip: int = 16):
         self.width = width
         self.height = height
 
@@ -25,6 +25,9 @@ class EnvWrapper(gym.Env):
 
     def step(self, action):
         obs, reward, done, info = self.env.step(action)
+        # HACK TO FOR NOW
+        for i in range(4):
+            obs, reward, done, info = self.env.step(action)
         # PLOT HOW THIS IS GOING
         # plt.imshow(obs)
         # plt.show()

@@ -31,7 +31,7 @@ class PPOAgent(BaseAgent):
         self.actor_old.load_state_dict(actor.state_dict())
         self.critic = critic
         self.optimizer = optimizer
-        self.action_space_n = env.action_space.n
+        self.action_space_n = env.env.action_space.n  # TODO
         # Hyper
         self.n_acc_gradient = n_acc_gradient
         self.gamma = gamma
@@ -76,10 +76,7 @@ class PPOAgent(BaseAgent):
         running_reward = 0
         # Good old Monte, No fancy stuff
         for r, d in zip(reversed(self.mem_buffer.rewards), reversed(self.mem_buffer.done)):
-            if d:
-                discounted_rewards.append(0)
-                continue
-            running_reward = r + (running_reward * self.gamma)
+            running_reward = r + (running_reward * self.gamma) * (1. - d)  # Zero out done states
             discounted_rewards.append(running_reward)
 
         return torch.tensor(discounted_rewards, dtype=torch.float32) - state_values.detach()

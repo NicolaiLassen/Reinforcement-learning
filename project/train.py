@@ -28,4 +28,4 @@ if __name__ == "__main__":
     print(critic)
     agent = PPOAgent(env_wrapper, actor, critic, optimizer)
     # TODO: More and smaller batches
-    agent.train(200, 100000)
+    agent.train(400, 100000)

@@ -36,7 +36,7 @@ class PolicyModelEncoder(nn.Module):
         self.encoder_layer = nn.TransformerEncoderLayer(d_model=width * 8, nhead=2)
         self.encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=4)
 
-        # SHOULD US CON
+        # SHOULD US CON FOR SCALE DOWN
         self.fc_in = nn.Linear(width * height, width * 8)
         self.fc_1 = nn.Linear(width * 8, width)
         self.fc_out = nn.Linear(height, action_dim)

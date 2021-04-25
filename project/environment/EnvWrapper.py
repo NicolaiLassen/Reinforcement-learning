@@ -25,6 +25,7 @@ class EnvWrapper(gym.Env):
 
     def step(self, action):
         obs, reward, done, info = self.env.step(action)
+        # PLOT HOW THIS IS GOING
         # plt.imshow(obs)
         # plt.show()
         frame = self.transformer(obs).view(-1, self.width * self.height)

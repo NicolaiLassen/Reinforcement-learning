@@ -130,4 +130,4 @@ if __name__ == "__main__":
     ])
 
     agent = PPOAgent(env_wrapper, actor, critic, optimizer)
-    agent.train(4000, 10000)
+    agent.train(4000, 100000)

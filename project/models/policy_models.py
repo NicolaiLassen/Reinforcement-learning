@@ -1,15 +1,16 @@
 import torch.nn as nn
 
-
+# Critic Model
 class PolicyModel(nn.Module):
-    def __init__(self, env_seq: int, width: int, height: int, action_dim: int = 1):
+    def __init__(self, env_seq: int, width: int, height: int, action_dim: int = 1, motion_blur: int = 4):
         super(PolicyModel, self).__init__()
 
         self.width = width
         self.height = height
+        self.motion_blur = motion_blur
 
-        self.fc_1 = nn.Linear(width * height, width * height)
-        self.fc_2 = nn.Linear(width * height, height)
+        self.fc_1 = nn.Linear(width * height * self.motion_blur, width * height * self.motion_blur)
+        self.fc_2 = nn.Linear(width * height * self.motion_blur, height)
         self.fc_out = nn.Linear(height, action_dim)
         self.activation = nn.ReLU()
 
@@ -22,13 +23,14 @@ class PolicyModel(nn.Module):
         out = self.activation(out)
         return self.fc_out(out)
 
-
+# Actor Model
 class PolicyModelEncoder(nn.Module):
-    def __init__(self, env_seq: int, width: int, height: int, action_dim: int):
+    def __init__(self, env_seq: int, width: int, height: int, action_dim: int, motion_blur: int = 4):
         super(PolicyModelEncoder, self).__init__()
 
         self.width = width
         self.height = height
+        self.motion_blur = motion_blur
 
         # TODO SIZE of network
         # scale hypers
@@ -37,7 +39,7 @@ class PolicyModelEncoder(nn.Module):
         self.encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=4)
 
         # SHOULD US CON FOR SCALE DOWN
-        self.fc_in = nn.Linear(width * height, width * 8)
+        self.fc_in = nn.Linear(width * height * self.motion_blur, width * 8)
         self.fc_1 = nn.Linear(width * 8, width)
         self.fc_out = nn.Linear(height, action_dim)
         self.activation = nn.ReLU()

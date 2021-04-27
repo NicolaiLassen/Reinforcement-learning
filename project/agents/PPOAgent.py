@@ -50,7 +50,7 @@ class PPOAgent(BaseAgent):
                 s = s1
                 action, log_probs = self.act(s)
                 s1, r, d, _ = self.env.step(action)
-                self.mem_buffer.set_next(s1, r, action, log_probs, d, self.mem_buffer.get_mask(d))
+                self.mem_buffer.set_next(s, r, action, log_probs, d, self.mem_buffer.get_mask(d))
                 if t % update_every == 0:
                     self.__update()
 

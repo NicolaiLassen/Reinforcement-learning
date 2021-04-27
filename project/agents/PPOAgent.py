@@ -21,7 +21,7 @@ class PPOAgent(BaseAgent):
                  actor: nn.Module,
                  critic: nn.Module,
                  optimizer: optim.Optimizer,
-                 n_acc_gradient=10,
+                 n_acc_gradient=20,
                  gamma=0.9,
                  eps_c=0.2,
                  n_max_times_update=1):
@@ -55,7 +55,6 @@ class PPOAgent(BaseAgent):
                     self.__update()
 
     def act(self, state):
-        state = state.unsqueeze(0).permute(1, 0, 2)
         action_logs_prob = self.actor_old(state)
         action_dist = Categorical(action_logs_prob)
         action = action_dist.sample()
@@ -63,20 +62,18 @@ class PPOAgent(BaseAgent):
         return action.detach().item(), action_dist_log_prob.detach()
 
     def save_actor(self):
-        torch.save(self.actor_old.state_dict(), "encoder_actor.ckpt")
+        print("save_actor")
+        # torch.save(self.actor_old.state_dict(), "encoder_actor.ckpt")
 
     def load_actor(self, path):
         self.actor.load_state_dict(torch.load(path))
         self.actor_old.load_state_dict(torch.load(path))
 
     def __eval(self):
-        # TODO: BATCH SIZE IS 1 at the moment
-        mem_states = self.mem_buffer.states.unsqueeze(0).permute(1, 0, 2)
-        # TODO: BATCH SIZE IS 1 at the moment attn 3D is (batch*head) seq_len _seq_len
-        action_prob = self.actor(mem_states, self.mem_buffer.masks)
+        action_prob = self.actor(self.mem_buffer.states, self.mem_buffer.masks)
         dist = Categorical(action_prob)
         action_log_probs = dist.log_prob(self.mem_buffer.actions)
-        state_values = self.critic(mem_states)
+        state_values = self.critic(self.mem_buffer.states)
         return action_log_probs, state_values
 
     def __calc_advantages(self, state_values):
@@ -111,9 +108,13 @@ class PPOAgent(BaseAgent):
         self.mem_buffer.clear()
 
     def __calc_objective(self, theta_log_probs, A_t):
+        c_s_o = self.__clipped_surrogate_objective(theta_log_probs, A_t)
+        return torch.mean(-c_s_o)
+
+    def __clipped_surrogate_objective(self, theta_log_probs, A_t):
         r_t = torch.exp(theta_log_probs - self.mem_buffer.action_log_probs)
         r_t_c = torch.clamp(r_t, min=1 - self.eps_c, max=1 + self.eps_c)
-        return torch.mean(-torch.min(r_t * A_t, r_t_c * A_t))
+        return torch.min(r_t * A_t, r_t_c * A_t)
 
 
 if __name__ == "__main__":
@@ -126,7 +127,7 @@ if __name__ == "__main__":
     lr_critic = 0.001
 
     # SWITCH THIS IN EQ BATCHES - NO cheating and getting good at only one thing
-    env_wrapper = EnvWrapper('procgen:procgen-starpilot-v0', seq_len)
+    env_wrapper = EnvWrapper('procgen:procgen-coinrun-v0', seq_len)
 
     actor = PolicyModelEncoder(seq_len, width, height, env_wrapper.env.action_space.n)
     critic = PolicyModel(seq_len, width, height)
@@ -137,5 +138,4 @@ if __name__ == "__main__":
     ])
 
     agent = PPOAgent(env_wrapper, actor, critic, optimizer)
-    # TODO: More and smaller batches
     agent.train(400, 100000)

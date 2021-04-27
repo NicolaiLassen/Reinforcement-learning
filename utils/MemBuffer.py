@@ -1,21 +1,16 @@
 import torch
 
 
-## class 2DBatchMemBuffer
-
 class MemBuffer:
-    ## Current single ep MemBuffer
     t = 0
 
-    ## Should take all probs not just from dist
-    # Pass in action values
     def __init__(self, max_time, width=64, height=64, motion_blur=4):
         self.max_length = max_time
         self.width = width
         self.height = height
         self.motiun_blur = motion_blur
 
-        self.states = torch.zeros(self.max_length, self.width * self.height * self.motiun_blur, dtype=torch.float)
+        self.states = torch.zeros(self.max_length, self.motiun_blur, self.height, self.width, dtype=torch.float)
         self.rewards = torch.zeros(self.max_length, dtype=torch.float)
         self.actions = torch.zeros(self.max_length, dtype=torch.int)
         self.action_log_probs = torch.zeros(self.max_length, dtype=torch.float)
@@ -37,7 +32,7 @@ class MemBuffer:
 
     def clear(self):
         self.t = 0
-        self.states = torch.zeros(self.max_length, self.width * self.height * self.motiun_blur, dtype=torch.float)
+        self.states = torch.zeros(self.max_length, self.motiun_blur, self.height, self.width, dtype=torch.float)
         self.rewards = torch.zeros(self.max_length, dtype=torch.float)
         self.actions = torch.zeros(self.max_length, dtype=torch.int)
         self.action_log_probs = torch.zeros(self.max_length, dtype=torch.float)

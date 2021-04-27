@@ -1,7 +1,6 @@
 import os
 
 import gym
-import numpy as np
 import torch
 from torchvision import transforms
 
@@ -10,14 +9,19 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 ## TODO TAKE BATCH OF FRAMES 4-8
 class EnvWrapper(gym.Env):
-    def __init__(self, environment, seq_len=4, width: int = 64, height: int = 64, frameskip: int = 8, frames: int = 4):
+    def __init__(self, environment,
+                 seq_len=4,
+                 width: int = 64,
+                 height: int = 64,
+                 frameskip: int = 4,
+                 motion_blur: int = 4):
         self.width = width
         self.height = height
 
         self.seq_len = seq_len
         self.env = gym.make(environment)
         self.env.frameskip = frameskip
-        self.frames = frames
+        self.motion_blur = motion_blur
 
         self.transformer = transforms.Compose([
             transforms.ToPILImage(),
@@ -31,7 +35,7 @@ class EnvWrapper(gym.Env):
         info = None  # DO WE NEED THIS
         acc_reward = 0
         acc_done = False
-        for i in range(self.frames): # HACK TO FOR NOW TODO
+        for i in range(self.motion_blur):  # HACK TO FOR NOW TODO
             obs, reward, done, info = self.env.step(action)
             if i == 0:
                 observations = self.transformer(obs)
@@ -40,11 +44,7 @@ class EnvWrapper(gym.Env):
             acc_reward += reward
             if done and (not acc_done):  # fast hack if it overlaps with done run # TODO
                 acc_done = done
-        # PLOT HOW THIS IS GOING
-        # plt.imshow(obs)
-        # plt.show()
-        frames = observations.view(-1, self.width * self.height * self.frames)
-        return frames, acc_reward, acc_done, info
+        return observations, acc_reward, acc_done, info
 
     def reset(self):
         observations = torch.zeros((64, 64))
@@ -54,8 +54,7 @@ class EnvWrapper(gym.Env):
                 observations = self.transformer(obs)
             else:
                 observations = torch.cat([observations, self.transformer(obs)])
-        frame = observations.view(-1, self.width * self.height * self.frames)
-        return frame
+        return observations
 
     def render(self, **kwargs):
         return self.env.render()

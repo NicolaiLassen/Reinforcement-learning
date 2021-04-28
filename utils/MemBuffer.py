@@ -12,8 +12,8 @@ class MemBuffer:
 
         self.states = torch.zeros(self.max_length, self.motiun_blur, self.height, self.width, dtype=torch.float).cuda()
         self.rewards = torch.zeros(self.max_length, dtype=torch.float)
-        self.actions = torch.zeros(self.max_length, dtype=torch.int)
-        self.action_log_probs = torch.zeros(self.max_length, dtype=torch.float)
+        self.actions = torch.zeros(self.max_length, dtype=torch.int).cuda()
+        self.action_log_probs = torch.zeros(self.max_length, dtype=torch.float).cuda()
         self.done = torch.zeros(self.max_length, dtype=torch.int)
 
     def set_next(self, state, reward, action, action_log_prob, done, mask=None):
@@ -31,8 +31,8 @@ class MemBuffer:
         self.t = 0
         self.states = torch.zeros(self.max_length, self.motiun_blur, self.height, self.width, dtype=torch.float).cuda()
         self.rewards = torch.zeros(self.max_length, dtype=torch.float)
-        self.actions = torch.zeros(self.max_length, dtype=torch.int)
-        self.action_log_probs = torch.zeros(self.max_length, dtype=torch.float)
+        self.actions = torch.zeros(self.max_length, dtype=torch.int).cuda()
+        self.action_log_probs = torch.zeros(self.max_length, dtype=torch.float).cuda()
         self.done = torch.zeros(self.max_length, dtype=torch.int)
 
     def get_mask(self, skip=False):

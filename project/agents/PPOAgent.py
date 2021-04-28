@@ -44,8 +44,8 @@ class PPOAgent(BaseAgent):
         self.mem_buffer = MemBuffer(max_time)
         update_every = max_time * self.n_max_times_update  # TODO: THIS IS FOR THE BATCH PART
         t = 0
+        s1 = self.env.reset()
         while t < max_time_steps:
-            s1 = self.env.reset()
             self.save_actor()
             for ep_t in range(max_time + 1):
                 t += 1
@@ -72,9 +72,9 @@ class PPOAgent(BaseAgent):
         self.actor_old.load_state_dict(torch.load(path))
 
     def __eval(self):
-        action_prob = self.actor(self.mem_buffer.states, self.mem_buffer.masks)
+        action_prob = self.actor(self.mem_buffer.states)
         dist = Categorical(action_prob)
-        action_log_probs = dist.log_prob(self.mem_buffer.actions)
+        action_log_probs = dist.log_prob(self.mem_buffer.actions.cuda())
         state_values = self.critic(self.mem_buffer.states)
         return action_log_probs, state_values
 
@@ -86,7 +86,7 @@ class PPOAgent(BaseAgent):
             running_reward = r + (running_reward * self.gamma) * (1. - d)  # Zero out done states
             discounted_rewards.append(running_reward)
 
-        return torch.tensor(discounted_rewards, dtype=torch.float32) - state_values.detach()
+        return torch.tensor(discounted_rewards, dtype=torch.float32).cuda() - state_values.detach()
 
     def __update(self):
         # ACC Gradient traning
@@ -114,7 +114,7 @@ class PPOAgent(BaseAgent):
         return torch.mean(-c_s_o)
 
     def __clipped_surrogate_objective(self, theta_log_probs, A_t):
-        r_t = torch.exp(theta_log_probs - self.mem_buffer.action_log_probs)
+        r_t = torch.exp(theta_log_probs - self.mem_buffer.action_log_probs.cuda())
         r_t_c = torch.clamp(r_t, min=1 - self.eps_c, max=1 + self.eps_c)
         return torch.min(r_t * A_t, r_t_c * A_t)
 
@@ -140,4 +140,4 @@ if __name__ == "__main__":
     ])
 
     agent = PPOAgent(env_wrapper, actor, critic, optimizer)
-    agent.train(400, 100000)
+    agent.train(2000, 100000)

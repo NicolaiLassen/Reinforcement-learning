@@ -35,14 +35,14 @@ class EnvWrapper(gym.Env):
         info = None  # DO WE NEED THIS
         acc_reward = 0
         acc_done = False
-        for i in range(self.motion_blur):  # HACK TO FOR NOW TODO
+        for i in range(self.motion_blur):
             obs, reward, done, info = self.env.step(action)
             if i == 0:
                 observations = self.transformer(obs)
             else:
                 observations = torch.cat([observations, self.transformer(obs)], dim=0)
             acc_reward += reward
-            if done and (not acc_done):  # fast hack if it overlaps with done run # TODO
+            if done and (not acc_done):
                 acc_done = done
         return observations, acc_reward, acc_done, info
 

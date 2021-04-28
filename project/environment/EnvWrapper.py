@@ -10,7 +10,9 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 ## TODO TAKE BATCH OF FRAMES 4-8
 class EnvWrapper(gym.Env):
     def __init__(self, environment,
-                 seq_len=4,
+                 num_levels,
+                 difficulty,
+                 seq_len=1,
                  width: int = 64,
                  height: int = 64,
                  frameskip: int = 4,
@@ -19,7 +21,7 @@ class EnvWrapper(gym.Env):
         self.height = height
 
         self.seq_len = seq_len
-        self.env = gym.make(environment)
+        self.env = gym.make(environment, num_levels=num_levels, distribution_mode=difficulty)
         self.env.frameskip = frameskip
         self.motion_blur = motion_blur
 
@@ -44,7 +46,7 @@ class EnvWrapper(gym.Env):
             acc_reward += reward
             if done and (not acc_done):  # fast hack if it overlaps with done run # TODO
                 acc_done = done
-        return observations, acc_reward, acc_done, info
+        return observations.cuda(), acc_reward, acc_done, info
 
     def reset(self):
         observations = torch.zeros((64, 64))
@@ -54,7 +56,7 @@ class EnvWrapper(gym.Env):
                 observations = self.transformer(obs)
             else:
                 observations = torch.cat([observations, self.transformer(obs)])
-        return observations
+        return observations.cuda()
 
     def render(self, **kwargs):
         return self.env.render()

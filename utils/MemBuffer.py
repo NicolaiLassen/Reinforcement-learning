@@ -10,7 +10,7 @@ class MemBuffer:
         self.height = height
         self.motiun_blur = motion_blur
 
-        self.states = torch.zeros(self.max_length, self.motiun_blur, self.height, self.width, dtype=torch.float)
+        self.states = torch.zeros(self.max_length, self.motiun_blur, self.height, self.width, dtype=torch.float).cuda()
         self.rewards = torch.zeros(self.max_length, dtype=torch.float)
         self.actions = torch.zeros(self.max_length, dtype=torch.int)
         self.action_log_probs = torch.zeros(self.max_length, dtype=torch.float)

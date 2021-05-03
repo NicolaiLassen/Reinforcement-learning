@@ -8,10 +8,10 @@ from torch.distributions import Categorical
 from project.agents.BaseAgent import BaseAgent
 from project.environment.EnvWrapper import EnvWrapper
 from project.models.policy_models import PolicyModelEncoder, PolicyModel
+from utils.Curiosity import ICM
 from utils.MemBuffer import MemBuffer
 
 
-## TODO GPU MY MAN
 ## TODO ENV BATCH FRAMES
 class PPOAgent(BaseAgent):
     mem_buffer: MemBuffer = None  # only used in traning
@@ -24,28 +24,30 @@ class PPOAgent(BaseAgent):
                  n_acc_gradient=20,
                  gamma=0.9,
                  eps_c=0.2,
-                 n_max_times_update=1):
+                 n_max_Times_update=1):
         self.env = env
         self.actor = actor
         self.actor_old = copy.deepcopy(actor)
         self.actor_old.load_state_dict(actor.state_dict())
         self.critic = critic
         self.optimizer = optimizer
-        self.action_space_n = env.env.action_space.n  # TODO
+        self.action_space_n = env.env.action_space.n
+        # Curiosity
+        self.curiosity = ICM()
         # Hyper
-        self.n_acc_gradient = n_acc_gradient
+        self.n_acc_grad = n_acc_gradient
         self.gamma = gamma
         self.eps_c = eps_c
-        self.n_max_times_update = n_max_times_update
+        self.n_max_Times_update = n_max_Times_update
 
-    def train(self, max_time: int, max_time_steps: int):
-        self.mem_buffer = MemBuffer(max_time)
-        update_every = max_time * self.n_max_times_update  # TODO: THIS IS FOR THE BATCH PART
+    def train(self, max_Time: int, max_Time_steps: int):
+        self.mem_buffer = MemBuffer(max_Time)
+        update_every = max_Time * self.n_max_Times_update  # TODO: BATCH
         t = 0
         s1 = self.env.reset()
-        while t < max_time_steps:
+        while t < max_Time_steps:
             self.save_actor()
-            for ep_t in range(max_time + 1):
+            for ep_T in range(max_Time + 1):
                 t += 1
                 s = s1
                 action, log_probs = self.act(s)
@@ -76,25 +78,19 @@ class PPOAgent(BaseAgent):
         state_values = self.critic(self.mem_buffer.states)
         return action_log_probs, state_values
 
-    def __calc_advantages(self, state_values):
-        discounted_rewards = []
-        running_reward = 0
-        # Good old Monte, No fancy stuff
-        for r, d in zip(reversed(self.mem_buffer.rewards), reversed(self.mem_buffer.done)):
-            running_reward = r + (running_reward * self.gamma) * (1. - d)  # Zero out done states
-            discounted_rewards.append(running_reward)
-
-        return torch.tensor(discounted_rewards, dtype=torch.float32).cuda() - state_values.detach()
-
     def __update(self):
         # ACC Gradient traning
         # We have the samples why not train a bit on it?
-        losses_ = torch.zeros(self.n_acc_gradient)  # SOME PRINT STUFF
-        for _ in range(self.n_acc_gradient):
+        losses_ = torch.zeros(self.n_acc_grad)  # SOME PRINT STUFF
+        for _ in range(self.n_acc_grad):
             self.optimizer.zero_grad()
             log_probs, state_values = self.__eval()
-            advantages = self.__calc_advantages(state_values)
-            loss = self.__calc_objective(log_probs, advantages)
+
+            A_T = self.__calc_advantages(state_values)
+            I_C_T = self.__calc_intrinsic_curiosity(state_values)
+            R_T = A_T + I_C_T
+
+            loss = self.__calc_objective(log_probs, R_T)
             loss.backward()
             self.optimizer.step()
 
@@ -107,14 +103,27 @@ class PPOAgent(BaseAgent):
         self.actor_old.load_state_dict(self.actor.state_dict())
         self.mem_buffer.clear()
 
-    def __calc_objective(self, theta_log_probs, A_t):
-        c_s_o = self.__clipped_surrogate_objective(theta_log_probs, A_t)
+    def __calc_intrinsic_curiosity(self, state_values):
+        return self.curiosity()
+
+    def __calc_advantages(self, state_values):
+        discounted_rewards = []
+        running_reward = 0
+
+        for r, d in zip(reversed(self.mem_buffer.rewards), reversed(self.mem_buffer.done)):
+            running_reward = r + (running_reward * self.gamma) * (1. - d)  # Zero out done states
+            discounted_rewards.append(running_reward)
+
+        return torch.tensor(discounted_rewards, dtype=torch.float32).cuda() - state_values.detach()
+
+    def __calc_objective(self, theta_log_probs, R_T):
+        c_s_o = self.__clipped_surrogate_objective(theta_log_probs, R_T)
         return torch.mean(-c_s_o)
 
-    def __clipped_surrogate_objective(self, theta_log_probs, A_t):
-        r_t = torch.exp(theta_log_probs - self.mem_buffer.action_log_probs)
-        r_t_c = torch.clamp(r_t, min=1 - self.eps_c, max=1 + self.eps_c)
-        return torch.min(r_t * A_t, r_t_c * A_t)
+    def __clipped_surrogate_objective(self, theta_log_probs, A_T):
+        r_T = torch.exp(theta_log_probs - self.mem_buffer.action_log_probs)
+        r_T_c = torch.clamp(r_T, min=1 - self.eps_c, max=1 + self.eps_c)
+        return torch.min(r_T * A_T, r_T_c * A_T)
 
 
 if __name__ == "__main__":

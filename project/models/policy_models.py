@@ -1,22 +1,10 @@
 import torch.nn as nn
 
-# Critic Model
-
+# Ref https://github.com/lukemelas/EfficientNet-PyTorch
 from efficientnet_pytorch import EfficientNet
 
 
-class EffNet(nn.Module):
-    def __init__(self, output_dim):
-        super(EffNet, self).__init__()
-        self.eff = EfficientNet.from_name('efficientnet-b0')
-        # Set last linear layer
-        fcin = self.eff._fc.in_features
-        self.eff._fc = nn.Linear(fcin, output_dim)
-
-    def forward(self, data):
-        return self.eff(data)
-
-
+# Critic Model
 class PolicyModel(nn.Module):
     def __init__(self, width: int, height: int, action_dim: int = 1, motion_blur: int = 4):
         super(PolicyModel, self).__init__()

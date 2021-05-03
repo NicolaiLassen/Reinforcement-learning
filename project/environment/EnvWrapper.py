@@ -15,7 +15,7 @@ class EnvWrapper(gym.Env):
                  seq_len=1,
                  width: int = 64,
                  height: int = 64,
-                 frameskip: int = 4,
+                 frameskip: int = 2,
                  motion_blur: int = 4):
         self.width = width
         self.height = height
@@ -25,7 +25,7 @@ class EnvWrapper(gym.Env):
         self.env.frameskip = frameskip
         self.motion_blur = motion_blur
 
-        self.transformer = transforms.Compose([
+        self.obs_transformer = transforms.Compose([
             transforms.ToPILImage(),
             transforms.Grayscale(),
             transforms.ToTensor(),
@@ -40,9 +40,9 @@ class EnvWrapper(gym.Env):
         for i in range(self.motion_blur):
             obs, reward, done, info = self.env.step(action)
             if i == 0:
-                observations = self.transformer(obs)
+                observations = self.obs_transformer(obs)
             else:
-                observations = torch.cat([observations, self.transformer(obs)], dim=0)
+                observations = torch.cat([observations, self.obs_transformer(obs)], dim=0)
             acc_reward += reward
             if done and (not acc_done):
                 acc_done = done
@@ -54,9 +54,9 @@ class EnvWrapper(gym.Env):
         obs = self.env.reset()
         for i in range(4):
             if i == 0:
-                observations = self.transformer(obs)
+                observations = self.obs_transformer(obs)
             else:
-                observations = torch.cat([observations, self.transformer(obs)])
+                observations = torch.cat([observations, self.obs_transformer(obs)])
         return observations.cuda()
 
     def render(self, **kwargs):

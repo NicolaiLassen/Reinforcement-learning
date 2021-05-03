@@ -18,7 +18,7 @@ class EffNet(nn.Module):
 
 
 class PolicyModel(nn.Module):
-    def __init__(self, env_seq: int, width: int, height: int, action_dim: int = 1, motion_blur: int = 4):
+    def __init__(self, width: int, height: int, action_dim: int = 1, motion_blur: int = 4):
         super(PolicyModel, self).__init__()
 
         self.width = width
@@ -44,7 +44,7 @@ class PolicyModel(nn.Module):
 
 # Actor Model
 class PolicyModelEncoder(nn.Module):
-    def __init__(self, env_seq: int, width: int, height: int, action_dim: int, motion_blur: int = 4):
+    def __init__(self, width: int, height: int, action_dim: int, motion_blur: int = 4):
         super(PolicyModelEncoder, self).__init__()
 
         self.width = width

@@ -3,8 +3,6 @@ import copy
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
-from procgen import ProcgenGym3Env
 from torch.distributions import Categorical
 
 from project.agents.BaseAgent import BaseAgent
@@ -120,7 +118,6 @@ class PPOAgent(BaseAgent):
 
 
 if __name__ == "__main__":
-    seq_len = 1
     bach_size = 1
     width = 64
     height = 64
@@ -131,8 +128,8 @@ if __name__ == "__main__":
     # SWITCH THIS IN EQ BATCHES - NO cheating and getting good at only one thing
     env_wrapper = EnvWrapper('procgen:procgen-starpilot-v0', num_levels=1, difficulty="easy")
 
-    actor = PolicyModelEncoder(seq_len, width, height, env_wrapper.env.action_space.n).cuda()
-    critic = PolicyModel(seq_len, width, height).cuda()
+    actor = PolicyModelEncoder(width, height, env_wrapper.env.action_space.n).cuda()
+    critic = PolicyModel(width, height).cuda()
 
     optimizer = torch.optim.Adam([
         {'params': actor.parameters(), 'lr': lr_actor},
@@ -140,4 +137,4 @@ if __name__ == "__main__":
     ])
 
     agent = PPOAgent(env_wrapper, actor, critic, optimizer)
-    agent.train(1000, 100000)
+    agent.train(100, 100000)

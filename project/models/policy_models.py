@@ -41,7 +41,7 @@ class PolicyModelEncoder(nn.Module):
 
         self.scale_down_encoder_eff = EfficientNet.from_name('efficientnet-b0', in_channels=4, num_classes=width * 8)
         self.encoder_layer = nn.TransformerEncoderLayer(d_model=width * 8, nhead=2)
-        self.encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=4)
+        self.encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=3)
 
         self.fc_out = nn.Linear(width * 8, action_dim)
         self.activation = nn.ReLU()

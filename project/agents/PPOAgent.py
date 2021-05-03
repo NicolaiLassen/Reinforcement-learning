@@ -10,9 +10,10 @@ from project.environment.EnvWrapper import EnvWrapper
 from project.models.policy_models import PolicyModelEncoder, PolicyModel
 from utils.Curiosity import ICM
 from utils.MemBuffer import MemBuffer
-
-
 ## TODO ENV BATCH FRAMES
+from utils.normalize_dist import normalize_dist
+
+
 class PPOAgent(BaseAgent):
     mem_buffer: MemBuffer = None  # only used in traning
 
@@ -33,12 +34,15 @@ class PPOAgent(BaseAgent):
         self.optimizer = optimizer
         self.action_space_n = env.env.action_space.n
         # Curiosity
-        self.curiosity = ICM()
-        # Hyper
+        self.ICM = ICM()
+        # Hyper n
         self.n_acc_grad = n_acc_gradient
+        self.n_max_Times_update = n_max_Times_update
+        # Hyper c
         self.gamma = gamma
         self.eps_c = eps_c
-        self.n_max_Times_update = n_max_Times_update
+        self.loss_entropy_c = 0.01
+        self.intrinsic_curiosity_c = 0.9
 
     def train(self, max_Time: int, max_Time_steps: int):
         self.mem_buffer = MemBuffer(max_Time)
@@ -77,14 +81,16 @@ class PPOAgent(BaseAgent):
         # We have the samples why not train a bit on it?
         for _ in range(self.n_acc_grad):
             self.optimizer.zero_grad()
-            log_probs, state_values = self.__eval()
+            action_log_probs, state_values, entropy = self.__eval()
 
             A_T = self.__advantages(state_values)
             I_C_T = self.__intrinsic_curiosity(state_values)
-            R_T = A_T + I_C_T
+            R_T = normalize_dist(A_T + (I_C_T * self.intrinsic_curiosity_c))
 
-            loss = self.__objective(log_probs, R_T)
+            c_s_o = self.__clipped_surrogate_objective(action_log_probs, R_T)
+            loss = (-c_s_o - (entropy * self.loss_entropy_c)).mean()
             loss.backward()
+
             self.optimizer.step()
 
             # SOME PRINT STUFF
@@ -101,7 +107,7 @@ class PPOAgent(BaseAgent):
         dist = Categorical(action_prob)
         action_log_probs = dist.log_prob(self.mem_buffer.actions)
         state_values = self.critic(self.mem_buffer.states)
-        return action_log_probs, state_values
+        return action_log_probs, state_values, dist.entropy()  # Bregman divergence
 
     def __advantages(self, state_values):
         discounted_rewards = []
@@ -114,16 +120,12 @@ class PPOAgent(BaseAgent):
         return torch.tensor(discounted_rewards, dtype=torch.float32).cuda() - state_values.detach()
 
     def __intrinsic_curiosity(self, state_values):
-        return self.curiosity(state_values)
+        return self.ICM(state_values)
 
-    def __objective(self, theta_log_probs, R_T):
-        c_s_o = self.__clipped_surrogate_objective(theta_log_probs, R_T)
-        return torch.mean(-c_s_o)
-
-    def __clipped_surrogate_objective(self, theta_log_probs, A_T):
-        r_T = torch.exp(theta_log_probs - self.mem_buffer.action_log_probs)
-        r_T_c = torch.clamp(r_T, min=1 - self.eps_c, max=1 + self.eps_c)
-        return torch.min(r_T * A_T, r_T_c * A_T)
+    def __clipped_surrogate_objective(self, action_log_probs, R_T):
+        r_T_theta = torch.exp(action_log_probs - self.mem_buffer.action_log_probs)
+        r_T_c_theta = torch.clamp(r_T_theta, min=1 - self.eps_c, max=1 + self.eps_c)
+        return torch.min(r_T_theta * R_T, r_T_c_theta * R_T).mean()  # E
 
 
 if __name__ == "__main__":
@@ -146,4 +148,4 @@ if __name__ == "__main__":
     ])
 
     agent = PPOAgent(env_wrapper, actor, critic, optimizer)
-    agent.train(100, 100000)
+    agent.train(150, 100000)

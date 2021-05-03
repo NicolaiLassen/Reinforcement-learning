@@ -71,26 +71,19 @@ class PPOAgent(BaseAgent):
         self.actor.load_state_dict(torch.load(path))
         self.actor_old.load_state_dict(torch.load(path))
 
-    def __eval(self):
-        action_prob = self.actor(self.mem_buffer.states)
-        dist = Categorical(action_prob)
-        action_log_probs = dist.log_prob(self.mem_buffer.actions)
-        state_values = self.critic(self.mem_buffer.states)
-        return action_log_probs, state_values
-
     def __update(self):
+        losses_ = torch.zeros(self.n_acc_grad)  # SOME PRINT STUFF
         # ACC Gradient traning
         # We have the samples why not train a bit on it?
-        losses_ = torch.zeros(self.n_acc_grad)  # SOME PRINT STUFF
         for _ in range(self.n_acc_grad):
             self.optimizer.zero_grad()
             log_probs, state_values = self.__eval()
 
-            A_T = self.__calc_advantages(state_values)
-            I_C_T = self.__calc_intrinsic_curiosity(state_values)
+            A_T = self.__advantages(state_values)
+            I_C_T = self.__intrinsic_curiosity(state_values)
             R_T = A_T + I_C_T
 
-            loss = self.__calc_objective(log_probs, R_T)
+            loss = self.__objective(log_probs, R_T)
             loss.backward()
             self.optimizer.step()
 
@@ -103,10 +96,14 @@ class PPOAgent(BaseAgent):
         self.actor_old.load_state_dict(self.actor.state_dict())
         self.mem_buffer.clear()
 
-    def __calc_intrinsic_curiosity(self, state_values):
-        return self.curiosity()
+    def __eval(self):
+        action_prob = self.actor(self.mem_buffer.states)
+        dist = Categorical(action_prob)
+        action_log_probs = dist.log_prob(self.mem_buffer.actions)
+        state_values = self.critic(self.mem_buffer.states)
+        return action_log_probs, state_values
 
-    def __calc_advantages(self, state_values):
+    def __advantages(self, state_values):
         discounted_rewards = []
         running_reward = 0
 
@@ -116,7 +113,10 @@ class PPOAgent(BaseAgent):
 
         return torch.tensor(discounted_rewards, dtype=torch.float32).cuda() - state_values.detach()
 
-    def __calc_objective(self, theta_log_probs, R_T):
+    def __intrinsic_curiosity(self, state_values):
+        return self.curiosity(state_values)
+
+    def __objective(self, theta_log_probs, R_T):
         c_s_o = self.__clipped_surrogate_objective(theta_log_probs, R_T)
         return torch.mean(-c_s_o)
 

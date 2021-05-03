@@ -46,6 +46,7 @@ class EnvWrapper(gym.Env):
             acc_reward += reward
             if done and (not acc_done):
                 acc_done = done
+
         return observations.cuda(), acc_reward, acc_done, info
 
     def reset(self):

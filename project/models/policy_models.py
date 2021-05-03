@@ -1,7 +1,20 @@
 import torch.nn as nn
 
 # Critic Model
-from project.models.SqueezeNet import SqueezeNet
+
+from efficientnet_pytorch import EfficientNet
+
+
+class EffNet(nn.Module):
+    def __init__(self, output_dim):
+        super(EffNet, self).__init__()
+        self.eff = EfficientNet.from_name('efficientnet-b0')
+        # Set last linear layer
+        fcin = self.eff._fc.in_features
+        self.eff._fc = nn.Linear(fcin, output_dim)
+
+    def forward(self, data):
+        return self.eff(data)
 
 
 class PolicyModel(nn.Module):
@@ -38,7 +51,7 @@ class PolicyModelEncoder(nn.Module):
         self.height = height
         self.motion_blur = motion_blur
 
-        self.encoder_squeeze = SqueezeNet(motion_blur, width * 8)
+        self.scale_down_encoder_eff = EfficientNet.from_name('efficientnet-b0', in_channels=4, num_classes=width * 8)
         self.encoder_layer = nn.TransformerEncoderLayer(d_model=width * 8, nhead=2)
         self.encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=4)
 
@@ -48,7 +61,7 @@ class PolicyModelEncoder(nn.Module):
 
     def forward(self, x, mask=None):
         out = x.view(-1, self.motion_blur, self.width, self.height)
-        out = self.encoder_squeeze(out)
+        out = self.scale_down_encoder_eff(out)
         out = out.unsqueeze(0).permute(1, 0, 2)
         out = self.encoder(out, mask)
         out = self.fc_out(out)

@@ -1,7 +1,7 @@
 import torch
 
-from project.agents.PPOAgent import PPOAgent
-from project.environment.EnvWrapper import EnvWrapper
+from project.agents.ppo_agent import PPOAgent
+from project.environment.env_wrapper import EnvWrapper
 from project.models.policy_models import PolicyModelEncoder, PolicyModel
 
 if __name__ == "__main__":

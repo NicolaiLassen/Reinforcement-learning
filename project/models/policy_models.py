@@ -1,5 +1,5 @@
 import torch.nn as nn
-
+import torch.nn.functional as F
 # Ref https://github.com/lukemelas/EfficientNet-PyTorch
 from efficientnet_pytorch import EfficientNet
 
@@ -39,13 +39,15 @@ class PolicyModelEncoder(nn.Module):
         self.height = height
         self.motion_blur = motion_blur
 
+        # TODO D_MODEL DIM
+        # TODO E_EMBED DIM
+
         self.scale_down_encoder_eff = EfficientNet.from_name('efficientnet-b0', in_channels=4, num_classes=width * 8)
         self.encoder_layer = nn.TransformerEncoderLayer(d_model=width * 8, nhead=2)
         self.encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=3)
 
         self.fc_out = nn.Linear(width * 8, action_dim)
         self.activation = nn.ReLU()
-        self.log_softmax = nn.LogSoftmax(dim=-1)
 
     def forward(self, x, mask=None):
         out = x.view(-1, self.motion_blur, self.width, self.height)
@@ -53,4 +55,4 @@ class PolicyModelEncoder(nn.Module):
         out = out.unsqueeze(0).permute(1, 0, 2)
         out = self.encoder(out, mask)
         out = self.fc_out(out)
-        return self.log_softmax(out)
+        return F.log_softmax(out, dim=-1)

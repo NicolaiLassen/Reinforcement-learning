@@ -5,12 +5,11 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.distributions import Categorical
 
-from project.agents.BaseAgent import BaseAgent
-from project.environment.EnvWrapper import EnvWrapper
+from project.agents.base_agent import BaseAgent
+from project.environment.env_wrapper import EnvWrapper
 from project.models.policy_models import PolicyModelEncoder, PolicyModel
-from utils.Curiosity import ICM
-from utils.MemBuffer import MemBuffer
-## TODO ENV BATCH FRAMES
+from utils.curiosity import ICM
+from utils.mem_buffer import MemBuffer
 from utils.normalize_dist import normalize_dist
 
 

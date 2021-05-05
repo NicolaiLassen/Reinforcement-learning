@@ -34,7 +34,7 @@ class PPOAgent(BaseAgent):
         self.optimizer = optimizer
         self.action_space_n = env.env.action_space.n
         # Curiosity
-        self.ICM = ICM(self.action_space_n)
+        self.ICM = ICM(self.action_space_n).cuda()
         # Hyper n
         self.n_acc_grad = n_acc_gradient
         self.n_max_Times_update = n_max_Times_update
@@ -65,8 +65,7 @@ class PPOAgent(BaseAgent):
         action_logs_prob = self.actor_old(state)
         action_dist = Categorical(action_logs_prob)
         action = action_dist.sample()
-        action_dist_log_prob = action_dist.log_prob(action)
-        return action.detach().item(), action_dist_log_prob.detach()
+        return action.detach().item(), action_dist.probs
 
     def save_actor(self):
         print("save_actor")
@@ -128,12 +127,14 @@ class PPOAgent(BaseAgent):
     def __intrinsic_reward_objective(self):
         next_states = self.mem_buffer.states[1:]
         states = self.mem_buffer.states[:-1]
+        action_probs = self.mem_buffer.action_log_probs[:-1]
         actions = self.mem_buffer.actions[:-1]
 
-        a_t_hats, phi_t1_hats, phi_t1s, phi_ts = self.ICM(states, next_states)
+        a_t_hats, phi_t1_hats, phi_t1s, phi_ts = self.ICM(states, next_states, action_probs)
+
         r_i_ts = F.mse_loss(phi_t1_hats, phi_t1s, reduce=False).sum(-1).mean()
 
-        return (self.eta * r_i_ts).detach(), r_i_ts, F.cross_entropy(a_t_hats, actions.view(-1))
+        return (self.eta * r_i_ts).detach(), r_i_ts, F.cross_entropy(a_t_hats, actions)
 
     def __clipped_surrogate_objective(self, action_log_probs, R_T):
         r_T_theta = torch.exp(action_log_probs - self.mem_buffer.action_log_probs)
@@ -145,6 +146,8 @@ if __name__ == "__main__":
     bach_size = 1
     width = 64
     height = 64
+
+    nn.Linear(20, 30)
 
     lr_actor = 0.0005
     lr_critic = 0.001
@@ -161,4 +164,4 @@ if __name__ == "__main__":
     ])
 
     agent = PPOAgent(env_wrapper, actor, critic, optimizer)
-    agent.train(150, 100000)
+    agent.train(10, 100000)

@@ -13,7 +13,7 @@ class MemBuffer:
 
         self.states = torch.zeros(self.max_length, self.motion_blur, self.height, self.width, dtype=torch.float).cuda()
         self.rewards = torch.zeros(self.max_length, dtype=torch.float)
-        self.actions = torch.zeros(self.max_length, dtype=torch.int).cuda()
+        self.actions = torch.zeros(self.max_length, dtype=torch.long).cuda()
         self.action_log_probs = torch.zeros(self.max_length, action_space_n, dtype=torch.float).cuda()
         self.done = torch.zeros(self.max_length, dtype=torch.int)
 

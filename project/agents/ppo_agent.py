@@ -109,10 +109,9 @@ class PPOAgent(BaseAgent):
 
     def __eval(self):
         action_prob = self.actor(self.mem_buffer.states)
-        dist = Categorical(action_prob)
-        action_log_probs = dist.log_prob(self.mem_buffer.actions)
+        action_dist = Categorical(action_prob)
         state_values = self.critic(self.mem_buffer.states)
-        return action_log_probs, state_values, dist.entropy()  # Bregman divergence
+        return action_dist.probs, state_values, action_dist.entropy()  # Bregman divergence
 
     def __advantages(self, state_values):
         discounted_rewards = []

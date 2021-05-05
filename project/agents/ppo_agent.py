@@ -57,7 +57,7 @@ class PPOAgent(BaseAgent):
                 s = s1
                 action, log_probs = self.act(s)
                 s1, r, d, _ = self.env.step(action)
-                self.mem_buffer.set_next(s, r, action, log_probs, d, self.mem_buffer.get_mask(d))
+                self.mem_buffer.set_next(s, s1, r, action, log_probs, d, self.mem_buffer.get_mask(d))
                 if t % update_every == 0:
                     self.__update()
 
@@ -125,10 +125,10 @@ class PPOAgent(BaseAgent):
         return torch.tensor(discounted_rewards, dtype=torch.float32).cuda() - state_values.detach()
 
     def __intrinsic_reward_objective(self):
-        next_states = self.mem_buffer.states[1:]
-        states = self.mem_buffer.states[:-1]
-        action_probs = self.mem_buffer.action_log_probs[:-1]
-        actions = self.mem_buffer.actions[:-1]
+        next_states = self.mem_buffer.next_states
+        states = self.mem_buffer.states
+        action_probs = self.mem_buffer.action_log_probs
+        actions = self.mem_buffer.actions
 
         a_t_hats, phi_t1_hats, phi_t1s, phi_ts = self.ICM(states, next_states, action_probs)
 

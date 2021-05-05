@@ -1,10 +1,13 @@
 import torch.nn as nn
 import torch.nn.functional as F
+
 # Ref https://github.com/lukemelas/EfficientNet-PyTorch
-from efficientnet_pytorch import EfficientNet
 
 
 # Critic Model
+from vit_pytorch import ViT
+
+
 class PolicyModel(nn.Module):
     def __init__(self, width: int, height: int, action_dim: int = 1, motion_blur: int = 4):
         super(PolicyModel, self).__init__()
@@ -39,20 +42,27 @@ class PolicyModelEncoder(nn.Module):
         self.height = height
         self.motion_blur = motion_blur
 
-        # TODO D_MODEL DIM
-        # TODO E_EMBED DIM
-
-        self.scale_down_encoder_eff = EfficientNet.from_name('efficientnet-b0', in_channels=4, num_classes=width * 8)
-        self.encoder_layer = nn.TransformerEncoderLayer(d_model=width * 8, nhead=2)
-        self.encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=3)
-
-        self.fc_out = nn.Linear(width * 8, action_dim)
+        self.encoder_out_dim = 1000
+        self.image_encoder = ViT(
+            image_size=64,
+            patch_size=32,
+            num_classes=self.encoder_out_dim,
+            dim=1024,
+            depth=4,
+            channels=4,
+            heads=8,
+            mlp_dim=2048,
+            dropout=0.1,
+            emb_dropout=0.1
+        )
+        self.fc_1 = nn.Linear(self.encoder_out_dim, self.encoder_out_dim)
+        self.fc_out = nn.Linear(self.encoder_out_dim, action_dim)
         self.activation = nn.ReLU()
 
     def forward(self, x, mask=None):
         out = x.view(-1, self.motion_blur, self.width, self.height)
-        out = self.scale_down_encoder_eff(out)
-        out = out.unsqueeze(0).permute(1, 0, 2)
-        out = self.encoder(out, mask)
+        out = self.image_encoder(out)
+        out = self.fc_1(out)
+        out = self.activation(out)
         out = self.fc_out(out)
         return F.log_softmax(out, dim=-1)

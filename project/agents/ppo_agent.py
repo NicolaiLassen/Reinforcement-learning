@@ -24,7 +24,12 @@ class PPOAgent(BaseAgent):
                  optimizer: optim.Optimizer,
                  n_acc_gradient=10,
                  gamma=0.9,
+                 lamda=0.8,
+                 eta=0.5,
+                 beta=0.5,
                  eps_c=0.2,
+                 loss_entropy_c=0.01,
+                 intrinsic_curiosity_c=0.8,
                  n_max_Times_update=1):
         self.env = env
         self.actor = actor
@@ -40,11 +45,13 @@ class PPOAgent(BaseAgent):
         self.n_max_Times_update = n_max_Times_update
         # Hyper c
         self.gamma = gamma
-        self.lamda = 0.8
+        self.lamda = lamda
+        self.eta = eta
+        self.beta = beta
+
         self.eps_c = eps_c
-        self.loss_entropy_c = 0.01
-        self.eta = 0.5
-        self.beta = 0.5
+        self.loss_entropy_c = loss_entropy_c
+        self.intrinsic_curiosity_c = intrinsic_curiosity_c
 
     def train(self, max_Time: int, max_Time_steps: int):
         self.mem_buffer = MemBuffer(max_Time)
@@ -92,7 +99,8 @@ class PPOAgent(BaseAgent):
 
             c_s_o = self.__clipped_surrogate_objective(action_log_probs, R_T)
 
-            curiosity_loss = (1 - (r_i_ts_loss * self.beta) + (a_t_hat_loss * self.beta))
+            print()
+            curiosity_loss = (1 - (a_t_hat_loss * self.beta) + (r_i_ts_loss * self.beta))
             c_s_o_loss = (-c_s_o - (entropy * self.loss_entropy_c)).mean()
 
             loss = self.lamda * c_s_o_loss + curiosity_loss
@@ -149,8 +157,6 @@ if __name__ == "__main__":
     width = 64
     height = 64
 
-    nn.Linear(20, 30)
-
     lr_actor = 0.0005
     lr_critic = 0.001
 
@@ -166,4 +172,4 @@ if __name__ == "__main__":
     ])
 
     agent = PPOAgent(env_wrapper, actor, critic, optimizer)
-    agent.train(400, 100000)
+    agent.train(500, 100000)

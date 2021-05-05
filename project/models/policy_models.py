@@ -45,13 +45,13 @@ class PolicyModelEncoder(nn.Module):
         self.encoder_out_dim = 1000
         self.image_encoder = ViT(
             image_size=64,
-            patch_size=32,
+            patch_size=16,
             num_classes=self.encoder_out_dim,
-            dim=1024,
+            dim=512,
             depth=4,
             channels=4,
-            heads=8,
-            mlp_dim=2048,
+            heads=4,
+            mlp_dim=1024,
             dropout=0.1,
             emb_dropout=0.1
         )

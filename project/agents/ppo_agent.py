@@ -40,9 +40,9 @@ class PPOAgent(BaseAgent):
         self.n_max_Times_update = n_max_Times_update
         # Hyper c
         self.gamma = gamma
+        self.lamda = 0.8
         self.eps_c = eps_c
         self.loss_entropy_c = 0.01
-        self.intrinsic_curiosity_c = 0.9
         self.eta = 0.5
         self.beta = 0.5
 
@@ -95,7 +95,7 @@ class PPOAgent(BaseAgent):
             curiosity_loss = (1 - (r_i_ts_loss * self.beta) + (a_t_hat_loss * self.beta))
             c_s_o_loss = (-c_s_o - (entropy * self.loss_entropy_c)).mean()
 
-            loss = c_s_o_loss + curiosity_loss
+            loss = self.lamda * c_s_o_loss + curiosity_loss
             loss.backward()
 
             self.optimizer.step()

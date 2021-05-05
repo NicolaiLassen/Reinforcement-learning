@@ -90,9 +90,10 @@ class PPOAgent(BaseAgent):
         # ACC Gradient traning
         # We have the samples why not train a bit on it?
         for _ in range(self.n_acc_grad):
-            action_log_probs, state_values = self.__eval()
+            action_log_probs, state_values, entropy = self.__eval()
 
-            A_T = self.__advantages(state_values)
+            d_r = self.__discounted_rewards()
+            A_T = d_r - state_values.detach()
             r_i_ts, r_i_ts_loss, a_t_hat_loss = self.__intrinsic_reward_objective()
 
             R_T = A_T + (r_i_ts * self.intrinsic_curiosity_c)
@@ -102,12 +103,12 @@ class PPOAgent(BaseAgent):
             curiosity_loss = (1 - (a_t_hat_loss * self.beta) + (r_i_ts_loss * self.beta))
 
             self.optimizer_actor.zero_grad()
-            actor_loss = self.lamda * (-c_s_o_loss).mean() + curiosity_loss
+            actor_loss = self.lamda * (- c_s_o_loss - (entropy * self.loss_entropy_c)).mean() + curiosity_loss
             actor_loss.backward()
             self.optimizer_actor.step()
 
             self.optimizer_critic.zero_grad()
-            critic_loss = 0.5 * F.mse_loss(A_T, state_values)
+            critic_loss = 0.5 * F.mse_loss(state_values, d_r)
             critic_loss.backward()
             self.optimizer_critic.step()
 
@@ -125,9 +126,9 @@ class PPOAgent(BaseAgent):
         dist = Categorical(action_prob)
         action_log_prob = dist.log_prob(self.mem_buffer.actions)
         state_values = self.critic(self.mem_buffer.states)
-        return action_log_prob, state_values.squeeze(1)  # Bregman divergence
+        return action_log_prob, state_values.squeeze(1), dist.entropy()  # Bregman divergence
 
-    def __advantages(self, state_values):
+    def __discounted_rewards(self):
         discounted_rewards = []
         running_reward = 0
 
@@ -135,7 +136,7 @@ class PPOAgent(BaseAgent):
             running_reward = r + (running_reward * self.gamma) * (1. - d)  # Zero out done states
             discounted_rewards.append(running_reward)
 
-        return torch.stack(discounted_rewards).float().cuda() - state_values.detach()
+        return torch.stack(discounted_rewards).float().cuda()
 
     def __intrinsic_reward_objective(self):
         next_states = self.mem_buffer.next_states

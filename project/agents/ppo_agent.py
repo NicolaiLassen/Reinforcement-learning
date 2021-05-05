@@ -2,6 +2,7 @@ import copy
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
 
@@ -33,7 +34,7 @@ class PPOAgent(BaseAgent):
         self.optimizer = optimizer
         self.action_space_n = env.env.action_space.n
         # Curiosity
-        self.ICM = ICM()
+        self.ICM = ICM(self.action_space_n)
         # Hyper n
         self.n_acc_grad = n_acc_gradient
         self.n_max_Times_update = n_max_Times_update
@@ -55,7 +56,8 @@ class PPOAgent(BaseAgent):
                 s = s1
                 action, log_probs = self.act(s)
                 s1, r, d, _ = self.env.step(action)
-                self.mem_buffer.set_next(s, r, action, log_probs, d, self.mem_buffer.get_mask(d))
+                r_i_t = self.__intrinsic_curiosity_act(s, s1, log_probs)
+                self.mem_buffer.set_next(s, r, action, log_probs, d, r_i_t, self.mem_buffer.get_mask(d))
                 if t % update_every == 0:
                     self.__update()
 
@@ -74,6 +76,11 @@ class PPOAgent(BaseAgent):
         self.actor.load_state_dict(torch.load(path))
         self.actor_old.load_state_dict(torch.load(path))
 
+    def __intrinsic_curiosity_act(self, state, next_state, action_probs):
+        a_t_hat, phi_t1_hat, phi_t1, phi_t = self.ICM(state, next_state)
+        r_i_t = F.mse_loss(phi_t1_hat, phi_t1, reduce=False)
+        return r_i_t
+
     def __update(self):
         losses_ = torch.zeros(self.n_acc_grad)  # SOME PRINT STUFF
         # ACC Gradient traning
@@ -83,9 +90,10 @@ class PPOAgent(BaseAgent):
             action_log_probs, state_values, entropy = self.__eval()
 
             A_T = self.__advantages(state_values)
-            I_C_T = self.__intrinsic_curiosity(state_values)
+            I_C_T = self.mem_buffer.intrinsic_rewards
             R_T = normalize_dist(A_T + (I_C_T * self.intrinsic_curiosity_c))
 
+            i_o = self.__intrinsic_objective()
             c_s_o = self.__clipped_surrogate_objective(action_log_probs, R_T)
             loss = (-c_s_o - (entropy * self.loss_entropy_c)).mean()
             loss.backward()
@@ -118,8 +126,8 @@ class PPOAgent(BaseAgent):
 
         return torch.tensor(discounted_rewards, dtype=torch.float32).cuda() - state_values.detach()
 
-    def __intrinsic_curiosity(self, state_values):
-        return self.ICM(state_values)
+    def __intrinsic_objective(self):
+        return
 
     def __clipped_surrogate_objective(self, action_log_probs, R_T):
         r_T_theta = torch.exp(action_log_probs - self.mem_buffer.action_log_probs)

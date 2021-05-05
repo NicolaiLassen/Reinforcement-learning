@@ -22,7 +22,7 @@ class PPOAgent(BaseAgent):
                  actor: nn.Module,
                  critic: nn.Module,
                  optimizer: optim.Optimizer,
-                 n_acc_gradient=20,
+                 n_acc_gradient=10,
                  gamma=0.9,
                  eps_c=0.2,
                  n_max_Times_update=1):
@@ -44,6 +44,7 @@ class PPOAgent(BaseAgent):
         self.loss_entropy_c = 0.01
         self.intrinsic_curiosity_c = 0.9
         self.eta = 0.5
+        self.beta = 0.5
 
     def train(self, max_Time: int, max_Time_steps: int):
         self.mem_buffer = MemBuffer(max_Time)
@@ -55,9 +56,9 @@ class PPOAgent(BaseAgent):
             for ep_T in range(max_Time + 1):
                 t += 1
                 s = s1
-                action, log_probs = self.act(s)
+                action, probs, log_prob = self.act(s)
                 s1, r, d, _ = self.env.step(action)
-                self.mem_buffer.set_next(s, s1, r, action, log_probs, d, self.mem_buffer.get_mask(d))
+                self.mem_buffer.set_next(s, s1, r, action, probs, log_prob, d, self.mem_buffer.get_mask(d))
                 if t % update_every == 0:
                     self.__update()
 
@@ -65,7 +66,8 @@ class PPOAgent(BaseAgent):
         action_logs_prob = self.actor_old(state)
         action_dist = Categorical(action_logs_prob)
         action = action_dist.sample()
-        return action.detach().item(), action_dist.probs
+        action_dist_log_prob = action_dist.log_prob(action)
+        return action.detach().item(), action_dist.probs.detach(), action_dist_log_prob.detach()
 
     def save_actor(self):
         print("save_actor")
@@ -85,12 +87,12 @@ class PPOAgent(BaseAgent):
 
             A_T = self.__advantages(state_values)
             r_i_ts, r_i_ts_loss, a_t_hat_loss = self.__intrinsic_reward_objective()
+
             R_T = normalize_dist(A_T + (r_i_ts * self.intrinsic_curiosity_c))
 
             c_s_o = self.__clipped_surrogate_objective(action_log_probs, R_T)
 
-            curiosity_loss = r_i_ts_loss + a_t_hat_loss
-            print(curiosity_loss)
+            curiosity_loss = (1 - r_i_ts_loss + a_t_hat_loss) * self.beta
             c_s_o_loss = (-c_s_o - (entropy * self.loss_entropy_c)).mean()
 
             loss = c_s_o_loss + curiosity_loss
@@ -109,9 +111,10 @@ class PPOAgent(BaseAgent):
 
     def __eval(self):
         action_prob = self.actor(self.mem_buffer.states)
-        action_dist = Categorical(action_prob)
+        dist = Categorical(action_prob)
+        action_log_prob = dist.log_prob(self.mem_buffer.actions)
         state_values = self.critic(self.mem_buffer.states)
-        return action_dist.probs, state_values, action_dist.entropy()  # Bregman divergence
+        return action_log_prob, state_values, dist.entropy()  # Bregman divergence
 
     def __advantages(self, state_values):
         discounted_rewards = []
@@ -126,17 +129,17 @@ class PPOAgent(BaseAgent):
     def __intrinsic_reward_objective(self):
         next_states = self.mem_buffer.next_states
         states = self.mem_buffer.states
-        action_probs = self.mem_buffer.action_log_probs
+        action_probs = self.mem_buffer.action_probs
         actions = self.mem_buffer.actions
 
         a_t_hats, phi_t1_hats, phi_t1s, phi_ts = self.ICM(states, next_states, action_probs)
 
-        r_i_ts = F.mse_loss(phi_t1_hats, phi_t1s, reduce=False).sum(-1).mean()
+        r_i_ts = F.mse_loss(phi_t1_hats, phi_t1s, reduction='none').sum(-1)
 
-        return (self.eta * r_i_ts).detach(), r_i_ts, F.cross_entropy(a_t_hats, actions)
+        return (self.eta * r_i_ts).detach(), r_i_ts.mean(), F.cross_entropy(a_t_hats, actions)
 
     def __clipped_surrogate_objective(self, action_log_probs, R_T):
-        r_T_theta = torch.exp(action_log_probs - self.mem_buffer.action_log_probs)
+        r_T_theta = torch.exp(action_log_probs - self.mem_buffer.action_log_prob)
         r_T_c_theta = torch.clamp(r_T_theta, min=1 - self.eps_c, max=1 + self.eps_c)
         return torch.min(r_T_theta * R_T, r_T_c_theta * R_T).mean()  # E
 
@@ -163,4 +166,4 @@ if __name__ == "__main__":
     ])
 
     agent = PPOAgent(env_wrapper, actor, critic, optimizer)
-    agent.train(10, 100000)
+    agent.train(400, 100000)

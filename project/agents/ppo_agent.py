@@ -91,6 +91,7 @@ class PPOAgent(BaseAgent):
             c_s_o = self.__clipped_surrogate_objective(action_log_probs, R_T)
 
             curiosity_loss = r_i_ts_loss + a_t_hat_loss
+            print(curiosity_loss)
             c_s_o_loss = (-c_s_o - (entropy * self.loss_entropy_c)).mean()
 
             loss = c_s_o_loss + curiosity_loss

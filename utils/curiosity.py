@@ -2,14 +2,30 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+class ICMHead(nn.Module):
+    def __init__(self, motion_blur = 4) -> None:
+        super(ICMHead, self).__init__()
+
+        self.conv1 = nn.Conv2d(motion_blur, 32, kernel_size=(8, 8), stride=(4, 4))
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=(4, 4), stride=(2, 2))
+        self.conv3 = nn.Conv2d(64, 32, kernel_size=(3, 3), stride=(1, 1))
+        self.dense = nn.Linear(32 * 7 * 7, 512)
+        self.output_size = 512
+        self.activation = nn.ReLU()
+
+    def forward(self, state):
+        output = self.activation(self.conv1(state))
+        output = self.activation(self.conv2(output))
+        output = self.activation(self.conv3(output))
+        output = self.activation(self.dense(output.view(-1, 32 * 7 * 7)))
+        return output
 
 # Intrinsic Curiosity Model Reward
 class ICM(nn.Module):
-    def __init__(self, action_space_n: int, width: int = 50, height: int = 50) -> None:
+    def __init__(self, action_space_n: int, width: int = 64, height: int = 64) -> None:
         super(ICM, self).__init__()
 
-        self.head = nn.Sequential()
-
+        self.head = ICMHead()
         self.state_size = width * height
 
         self.forward_model = nn.Sequential(
@@ -25,6 +41,7 @@ class ICM(nn.Module):
         )
 
     def forward(self, state, next_state, action):
+        print(state.shape)
         phi_t = self.head(state)
         phi_t1 = self.head(next_state)
         phi_t1_hat = self.forward_model(torch.cat((phi_t, action), 1))

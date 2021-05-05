@@ -11,7 +11,6 @@ from project.environment.env_wrapper import EnvWrapper
 from project.models.policy_models import PolicyModelEncoder, PolicyModel
 from utils.curiosity import ICM
 from utils.mem_buffer import MemBuffer
-from utils.normalize_dist import normalize_dist
 
 
 class PPOAgent(BaseAgent):
@@ -21,22 +20,24 @@ class PPOAgent(BaseAgent):
                  env: EnvWrapper,
                  actor: nn.Module,
                  critic: nn.Module,
-                 optimizer: optim.Optimizer,
+                 optimizer_actor: optim.Optimizer,
+                 optimizer_critic: optim.Optimizer,
                  n_acc_gradient=10,
                  gamma=0.9,
-                 lamda=0.8,
+                 lamda=0.5,
                  eta=0.5,
-                 beta=0.5,
+                 beta=0.8,
                  eps_c=0.2,
                  loss_entropy_c=0.01,
-                 intrinsic_curiosity_c=0.8,
+                 intrinsic_curiosity_c=0.9,
                  n_max_Times_update=1):
         self.env = env
         self.actor = actor
         self.actor_old = copy.deepcopy(actor)
         self.actor_old.load_state_dict(actor.state_dict())
         self.critic = critic
-        self.optimizer = optimizer
+        self.optimizer_actor = optimizer_actor
+        self.optimizer_critic = optimizer_critic
         self.action_space_n = env.env.action_space.n
         # Curiosity
         self.ICM = ICM(self.action_space_n).cuda()
@@ -89,28 +90,30 @@ class PPOAgent(BaseAgent):
         # ACC Gradient traning
         # We have the samples why not train a bit on it?
         for _ in range(self.n_acc_grad):
-            self.optimizer.zero_grad()
-            action_log_probs, state_values, entropy = self.__eval()
+            action_log_probs, state_values = self.__eval()
 
             A_T = self.__advantages(state_values)
             r_i_ts, r_i_ts_loss, a_t_hat_loss = self.__intrinsic_reward_objective()
 
-            R_T = normalize_dist(A_T + (r_i_ts * self.intrinsic_curiosity_c))
+            R_T = A_T + (r_i_ts * self.intrinsic_curiosity_c)
 
-            c_s_o = self.__clipped_surrogate_objective(action_log_probs, R_T)
+            c_s_o_loss = self.__clipped_surrogate_objective(action_log_probs, R_T)
 
-            print()
             curiosity_loss = (1 - (a_t_hat_loss * self.beta) + (r_i_ts_loss * self.beta))
-            c_s_o_loss = (-c_s_o - (entropy * self.loss_entropy_c)).mean()
 
-            loss = self.lamda * c_s_o_loss + curiosity_loss
-            loss.backward()
+            self.optimizer_actor.zero_grad()
+            actor_loss = self.lamda * (-c_s_o_loss).mean() + curiosity_loss
+            actor_loss.backward()
+            self.optimizer_actor.step()
 
-            self.optimizer.step()
+            self.optimizer_critic.zero_grad()
+            critic_loss = 0.5 * F.mse_loss(A_T, state_values)
+            critic_loss.backward()
+            self.optimizer_critic.step()
 
             # SOME PRINT STUFF
             with torch.no_grad():
-                losses_[_] = loss.item()
+                losses_[_] = actor_loss.item()
 
         print("Mean ep losses: ", losses_.mean())
         print("Total ep reward: ", self.mem_buffer.rewards.sum())
@@ -122,7 +125,7 @@ class PPOAgent(BaseAgent):
         dist = Categorical(action_prob)
         action_log_prob = dist.log_prob(self.mem_buffer.actions)
         state_values = self.critic(self.mem_buffer.states)
-        return action_log_prob, state_values, dist.entropy()  # Bregman divergence
+        return action_log_prob, state_values.squeeze(1)  # Bregman divergence
 
     def __advantages(self, state_values):
         discounted_rewards = []
@@ -132,7 +135,7 @@ class PPOAgent(BaseAgent):
             running_reward = r + (running_reward * self.gamma) * (1. - d)  # Zero out done states
             discounted_rewards.append(running_reward)
 
-        return torch.tensor(discounted_rewards, dtype=torch.float32).cuda() - state_values.detach()
+        return torch.stack(discounted_rewards).float().cuda() - state_values.detach()
 
     def __intrinsic_reward_objective(self):
         next_states = self.mem_buffer.next_states
@@ -166,10 +169,8 @@ if __name__ == "__main__":
     actor = PolicyModelEncoder(width, height, env_wrapper.env.action_space.n).cuda()
     critic = PolicyModel(width, height).cuda()
 
-    optimizer = torch.optim.Adam([
-        {'params': actor.parameters(), 'lr': lr_actor},
-        {'params': critic.parameters(), 'lr': lr_critic}
-    ])
+    optimizer_actor = torch.optim.Adam(actor.parameters(), lr=lr_actor)
+    optimizer_critic = torch.optim.Adam(critic.parameters(), lr=lr_critic)
 
-    agent = PPOAgent(env_wrapper, actor, critic, optimizer)
-    agent.train(500, 100000)
+    agent = PPOAgent(env_wrapper, actor, critic, optimizer_actor, optimizer_critic)
+    agent.train(400, 400000)

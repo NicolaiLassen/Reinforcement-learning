@@ -42,7 +42,7 @@ class PolicyModelEncoder(nn.Module):
         self.height = height
         self.motion_blur = motion_blur
 
-        self.encoder_out_dim = 1000
+        self.encoder_out_dim = 512
         self.image_encoder = ViT(
             image_size=64,
             patch_size=16,

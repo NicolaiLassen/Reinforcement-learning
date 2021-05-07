@@ -55,7 +55,7 @@ class PPOAgent(BaseAgent):
         self.intrinsic_curiosity_c = intrinsic_curiosity_c
 
     def train(self, max_Time: int, max_Time_steps: int):
-        self.mem_buffer = MemBuffer(max_Time)
+        self.mem_buffer = MemBuffer(max_Time, action_space_n=self.action_space_n)
         update_every = max_Time * self.n_max_Times_update  # TODO: BATCH
         t = 0
         s1 = self.env.reset()

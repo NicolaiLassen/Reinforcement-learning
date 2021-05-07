@@ -39,9 +39,9 @@ class ICM(nn.Module):
         )
 
         self.inverse_model = nn.Sequential(
-            nn.Linear(self.feature_size * 2, 512),
+            nn.Linear(self.feature_size * 2, self.feature_size),
             nn.ReLU(),
-            nn.Linear(512, action_space_n),
+            nn.Linear(self.feature_size, action_space_n),
             nn.ReLU()
         )
 

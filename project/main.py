@@ -1,18 +1,19 @@
 import os
 
 import torch
+
 from agents.ppo_agent import PPOAgent
 from environment.env_wrapper import EnvWrapper
+from models.curiosity import IntrinsicCuriosityModule
 from models.policy_models import PolicyModelEncoder, PolicyModel
 
-from models.curiosity import IntrinsicCuriosityModule
 
 def create_dir(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     create_dir("./ckpt/losses_curiosity")
     create_dir("./ckpt/losses_actor")
     create_dir("./ckpt/losses_critic")

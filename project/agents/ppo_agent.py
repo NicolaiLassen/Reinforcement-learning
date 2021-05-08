@@ -165,7 +165,7 @@ if __name__ == "__main__":
     lr_critic = 0.001
 
     # SWITCH THIS IN EQ BATCHES - NO cheating and getting good at only one thing
-    env_wrapper = EnvWrapper('procgen:procgen-starpilot-v0', num_levels=1, difficulty="easy")
+    env_wrapper = EnvWrapper('procgen:procgen-starpilot-v0')
 
     actor = PolicyModelEncoder(width, height, env_wrapper.env.action_space.n).cuda()
     critic = PolicyModel(width, height).cuda()

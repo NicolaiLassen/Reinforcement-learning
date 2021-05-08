@@ -19,7 +19,7 @@ class PPOAgent(BaseAgent):
     t_0_ckpt = 0
     t_1_ckpt = 0
     t_update = 0
-    model_save_every = 20  # 200000000 / 10000 / 20 = 100
+    model_save_every = 100  # 200000000 / 5000 / 200 = 400
 
     def __init__(self,
                  env: EnvWrapper,
@@ -98,6 +98,8 @@ class PPOAgent(BaseAgent):
         with open('ckpt/rewards/{}_{}.pkl'.format(self.t_0_ckpt, self.t_1_ckpt), 'wb') as handle:
             pickle.dump(rewards, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+        self.t_update += 1
+
     def load_actor(self, path):
         self.actor.load_state_dict(torch.load(path))
         self.actor_old.load_state_dict(torch.load(path))
@@ -145,7 +147,6 @@ class PPOAgent(BaseAgent):
         self.actor_old.load_state_dict(self.actor.state_dict())
         self.mem_buffer.clear()
         self.save_ckpt(self.mem_buffer.rewards, curiosity_losses.mean(), actor_losses.mean(), critic_losses.mean())
-        self.t_update += 1
 
     def __eval(self):
         action_prob = self.actor(self.mem_buffer.states)

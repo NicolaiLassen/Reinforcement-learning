@@ -43,5 +43,5 @@ if __name__ == "__main__":
     agent = PPOAgent(env_wrapper, actor, critic, icm, optimizer_actor, optimizer_critic)
 
     # counters ckpt
-    # model_save_every = 20  # 200000000 / 10000 / 20 = 100
-    agent.train(10000, 200000000)
+    # model_save_every = 20 # 200000000 / 5000 / 200 = 400
+    agent.train(5000, 200000000)

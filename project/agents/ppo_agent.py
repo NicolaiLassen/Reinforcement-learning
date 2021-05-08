@@ -93,11 +93,6 @@ class PPOAgent(BaseAgent):
         torch.save(actor_loss, "ckpt/losses_actor/{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
         torch.save(critic_loss, "ckpt/losses_critic/{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
 
-        print(rewards)
-        print(curiosity_loss)
-        print(actor_loss)
-        print(critic_loss)
-
         with open('ckpt/rewards/{}_{}.pkl'.format(self.t_0_ckpt, self.t_1_ckpt), 'wb') as handle:
             pickle.dump(rewards, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -112,6 +107,10 @@ class PPOAgent(BaseAgent):
         critic_losses = torch.zeros(self.n_acc_grad)
 
         for i in range(self.n_acc_grad):
+
+            # defrag GPU Mem
+            torch.cuda.empty_cache()
+
             action_log_probs, state_values, entropy = self.__eval()
 
             d_r = self.__discounted_rewards()

@@ -20,6 +20,8 @@ class PPOAgent(BaseAgent):
     # counters ckpt
     t_0_ckpt = 0
     t_1_ckpt = 0
+    t_update = 0
+    model_save_every = 100
 
     def __init__(self,
                  env: EnvWrapper,
@@ -88,7 +90,9 @@ class PPOAgent(BaseAgent):
 
     def save_ckpt(self, rewards, curiosity_loss, actor_loss, critic_loss):
 
-        torch.save(self.actor_old.state_dict(), "ckpt/actor_{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
+        if 1 % self.model_save_every == 0:
+            torch.save(self.actor_old.state_dict(), "ckpt/actor_{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
+
         torch.save(curiosity_loss, "ckpt/losses_curiosity/{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
         torch.save(actor_loss, "ckpt/losses_actor/{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
         torch.save(critic_loss, "ckpt/losses_critic/{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
@@ -107,7 +111,6 @@ class PPOAgent(BaseAgent):
         critic_losses = torch.zeros(self.n_acc_grad)
 
         for i in range(self.n_acc_grad):
-
             # defrag GPU Mem
             torch.cuda.empty_cache()
 
@@ -144,6 +147,7 @@ class PPOAgent(BaseAgent):
         self.actor_old.load_state_dict(self.actor.state_dict())
         self.mem_buffer.clear()
         self.save_ckpt(self.mem_buffer.rewards, curiosity_losses.mean(), actor_losses.mean(), critic_losses.mean())
+        self.t_update += 1
 
     def __eval(self):
         action_prob = self.actor(self.mem_buffer.states)

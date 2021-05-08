@@ -205,5 +205,4 @@ if __name__ == "__main__":
     optimizer_critic = torch.optim.Adam(critic.parameters(), lr=lr_critic)
 
     agent = PPOAgent(env_wrapper, actor, critic, icm, optimizer_actor, optimizer_critic)
-    # 20000
-    agent.train(400, 200000000)
+    agent.train(20000, 200000000)

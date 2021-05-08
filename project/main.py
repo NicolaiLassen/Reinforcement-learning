@@ -1,9 +1,9 @@
 import torch
+from agents.ppo_agent import PPOAgent
+from environment.env_wrapper import EnvWrapper
+from models.policy_models import PolicyModelEncoder, PolicyModel
 
-from project.agents.ppo_agent import PPOAgent
-from project.environment.env_wrapper import EnvWrapper
-from project.models.policy_models import PolicyModelEncoder, PolicyModel
-from utils.curiosity import IntrinsicCuriosityModule
+from models.curiosity import IntrinsicCuriosityModule
 
 if __name__ == "__main__":
     bach_size = 1

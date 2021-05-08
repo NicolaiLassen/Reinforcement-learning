@@ -7,11 +7,11 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
 
-from project.agents.base_agent import BaseAgent
-from project.environment.env_wrapper import EnvWrapper
-from project.models.policy_models import PolicyModelEncoder, PolicyModel
-from utils.curiosity import IntrinsicCuriosityModule
+from environment.env_wrapper import EnvWrapper
+from models.curiosity import IntrinsicCuriosityModule
+from models.policy_models import PolicyModelEncoder, PolicyModel
 from utils.mem_buffer import MemBuffer
+from .base_agent import BaseAgent
 
 
 class PPOAgent(BaseAgent):

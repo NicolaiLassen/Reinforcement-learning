@@ -88,17 +88,17 @@ class PPOAgent(BaseAgent):
 
     def save_ckpt(self, rewards, curiosity_loss, actor_loss, critic_loss):
 
-        torch.save(self.actor_old.state_dict(), "../ckpt/actor_{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
-        torch.save(curiosity_loss, "../ckpt/losses_curiosity/{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
-        torch.save(actor_loss, "../ckpt/losses_actor/{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
-        torch.save(critic_loss, "../ckpt/losses_critic/{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
+        torch.save(self.actor_old.state_dict(), "ckpt/actor_{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
+        torch.save(curiosity_loss, "ckpt/losses_curiosity/{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
+        torch.save(actor_loss, "ckpt/losses_actor/{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
+        torch.save(critic_loss, "ckpt/losses_critic/{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
 
         print(rewards)
         print(curiosity_loss)
         print(actor_loss)
         print(critic_loss)
 
-        with open('../ckpt/rewards/{}_{}.pkl'.format(self.t_0_ckpt, self.t_1_ckpt), 'wb') as handle:
+        with open('ckpt/rewards/{}_{}.pkl'.format(self.t_0_ckpt, self.t_1_ckpt), 'wb') as handle:
             pickle.dump(rewards, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def load_actor(self, path):

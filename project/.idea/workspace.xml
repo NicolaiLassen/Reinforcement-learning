@@ -4,8 +4,6 @@
     <list default="true" id="8e6dcee2-c76b-4b51-ad15-8b2af6f254f4" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/../.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../.idea/rl.iml" beforeDir="false" afterPath="$PROJECT_DIR$/../.idea/rl.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agents/ppo_agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/agents/ppo_agent.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../utils/curiosity.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../utils/mem_buffer.py" beforeDir="false" />
@@ -119,7 +117,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1618165131630</updated>
-      <workItem from="1620511005079" duration="2292000" />
+      <workItem from="1620511005079" duration="2314000" />
     </task>
     <servers />
   </component>

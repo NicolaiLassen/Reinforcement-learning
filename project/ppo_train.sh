@@ -11,4 +11,4 @@
  module load python3/3.6.2
  pip3 install --user -r requirements.txt
  echo "Traning..."
- python3 ppo_agent.py
+ python3 main.py

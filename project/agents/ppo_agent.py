@@ -19,7 +19,7 @@ class PPOAgent(BaseAgent):
     t_0_ckpt = 0
     t_1_ckpt = 0
     t_update = 0
-    model_save_every = 100  # 200000000 / 5000 / 200 = 400
+    model_save_every = 100  # 200000000 / 5000 / 100 = 400
 
     def __init__(self,
                  env: EnvWrapper,
@@ -88,7 +88,7 @@ class PPOAgent(BaseAgent):
 
     def save_ckpt(self, rewards, curiosity_loss, actor_loss, critic_loss):
 
-        if 1 % self.model_save_every == 0:
+        if self.t_update % self.model_save_every == 0:
             torch.save(self.actor_old.state_dict(), "ckpt/actor_{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
 
         torch.save(curiosity_loss, "ckpt/losses_curiosity/{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))

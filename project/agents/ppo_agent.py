@@ -143,9 +143,8 @@ class PPOAgent(BaseAgent):
                 critic_losses[i] = critic_loss.item()
 
         self.actor_old.load_state_dict(self.actor.state_dict())
-        print(self.mem_buffer.rewards.sum())
         self.mem_buffer.clear()
-        # self.save_ckpt(self.mem_buffer.rewards, curiosity_losses.mean(), actor_losses.mean(), critic_losses.mean())
+        self.save_ckpt(self.mem_buffer.rewards, curiosity_losses.mean(), actor_losses.mean(), critic_losses.mean())
 
     def __eval(self):
         action_prob = self.actor(self.mem_buffer.states)

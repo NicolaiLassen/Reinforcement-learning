@@ -1,0 +1,6 @@
+torch==1.8.1
+torchvision==0.9.1
+vit_pytorch==0.18.1
+torch-optimizer==0.1.0
+gym==0.18.0
+procgen==0.10.4

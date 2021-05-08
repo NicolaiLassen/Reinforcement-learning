@@ -1,13 +1,9 @@
 import torch.nn as nn
 import torch.nn.functional as F
-
-# Ref https://github.com/lukemelas/EfficientNet-PyTorch
-
-
-# Critic Model
 from vit_pytorch import ViT
 
 
+# Critic Model
 class PolicyModel(nn.Module):
     def __init__(self, width: int, height: int, action_dim: int = 1, motion_blur: int = 4):
         super(PolicyModel, self).__init__()

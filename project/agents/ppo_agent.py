@@ -1,4 +1,5 @@
 import copy
+import pickle
 
 import torch
 import torch.nn as nn
@@ -9,17 +10,22 @@ from torch.distributions import Categorical
 from project.agents.base_agent import BaseAgent
 from project.environment.env_wrapper import EnvWrapper
 from project.models.policy_models import PolicyModelEncoder, PolicyModel
-from utils.curiosity import ICM
+from utils.curiosity import IntrinsicCuriosityModule
 from utils.mem_buffer import MemBuffer
 
 
 class PPOAgent(BaseAgent):
     mem_buffer: MemBuffer = None  # only used in traning
 
+    # counters ckpt
+    t_0_ckpt = 0
+    t_1_ckpt = 0
+
     def __init__(self,
                  env: EnvWrapper,
                  actor: nn.Module,
                  critic: nn.Module,
+                 curiosity: nn.Module,
                  optimizer_actor: optim.Optimizer,
                  optimizer_critic: optim.Optimizer,
                  n_acc_gradient=10,
@@ -36,11 +42,13 @@ class PPOAgent(BaseAgent):
         self.actor_old = copy.deepcopy(actor)
         self.actor_old.load_state_dict(actor.state_dict())
         self.critic = critic
+
         self.optimizer_actor = optimizer_actor
         self.optimizer_critic = optimizer_critic
+
         self.action_space_n = env.env.action_space.n
         # Curiosity
-        self.ICM = ICM(self.action_space_n).cuda()
+        self.curiosity = curiosity
         # Hyper n
         self.n_acc_grad = n_acc_gradient
         self.n_max_Times_update = n_max_Times_update
@@ -54,21 +62,22 @@ class PPOAgent(BaseAgent):
         self.loss_entropy_c = loss_entropy_c
         self.intrinsic_curiosity_c = intrinsic_curiosity_c
 
-    def train(self, max_Time: int, max_Time_steps: int):
-        self.mem_buffer = MemBuffer(max_Time, action_space_n=self.action_space_n)
-        update_every = max_Time * self.n_max_Times_update  # TODO: BATCH
+    def train(self, max_time_per_step: int, max_time_steps: int):
+        self.mem_buffer = MemBuffer(max_time_per_step, action_space_n=self.action_space_n)
+        update_every = max_time_per_step * self.n_max_Times_update  # TODO: BATCH
         t = 0
         s1 = self.env.reset()
-        while t < max_Time_steps:
-            self.save_actor()
-            for ep_T in range(max_Time + 1):
+        while t < max_time_steps:
+            for ep_T in range(max_time_per_step + 1):
                 t += 1
                 s = s1
                 action, probs, log_prob = self.act(s)
                 s1, r, d, _ = self.env.step(action)
                 self.mem_buffer.set_next(s, s1, r, action, probs, log_prob, d, self.mem_buffer.get_mask(d))
                 if t % update_every == 0:
+                    self.t_1_ckpt = t
                     self.__update()
+                    self.t_0_ckpt = t
 
     def act(self, state):
         action_logs_prob = self.actor_old(state)
@@ -77,19 +86,32 @@ class PPOAgent(BaseAgent):
         action_dist_log_prob = action_dist.log_prob(action)
         return action.detach().item(), action_dist.probs.detach(), action_dist_log_prob.detach()
 
-    def save_actor(self):
-        print("save_actor")
-        # torch.save(self.actor_old.state_dict(), "encoder_actor.ckpt")
+    def save_ckpt(self, rewards, curiosity_loss, actor_loss, critic_loss):
+
+        torch.save(self.actor_old.state_dict(), "../ckpt/actor_{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
+        torch.save(curiosity_loss, "../ckpt/losses_curiosity/{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
+        torch.save(actor_loss, "../ckpt/losses_actor/{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
+        torch.save(critic_loss, "../ckpt/losses_critic/{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
+
+        print(rewards)
+        print(curiosity_loss)
+        print(actor_loss)
+        print(critic_loss)
+
+        with open('../ckpt/rewards/{}_{}.pkl'.format(self.t_0_ckpt, self.t_1_ckpt), 'wb') as handle:
+            pickle.dump(rewards, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def load_actor(self, path):
         self.actor.load_state_dict(torch.load(path))
         self.actor_old.load_state_dict(torch.load(path))
 
     def __update(self):
-        losses_ = torch.zeros(self.n_acc_grad)  # SOME PRINT STUFF
-        # ACC Gradient traning
-        # We have the samples why not train a bit on it?
-        for _ in range(self.n_acc_grad):
+
+        curiosity_losses = torch.zeros(self.n_acc_grad)
+        actor_losses = torch.zeros(self.n_acc_grad)
+        critic_losses = torch.zeros(self.n_acc_grad)
+
+        for i in range(self.n_acc_grad):
             action_log_probs, state_values, entropy = self.__eval()
 
             d_r = self.__discounted_rewards()
@@ -100,26 +122,30 @@ class PPOAgent(BaseAgent):
 
             c_s_o_loss = self.__clipped_surrogate_objective(action_log_probs, R_T)
 
+            actor_loss = (- c_s_o_loss - (entropy * self.loss_entropy_c)).mean()
             curiosity_loss = (1 - (a_t_hat_loss * self.beta) + (r_i_ts_loss * self.beta))
 
             self.optimizer_actor.zero_grad()
-            actor_loss = self.lamda * (- c_s_o_loss - (entropy * self.loss_entropy_c)).mean() + curiosity_loss
-            actor_loss.backward()
+            actor_icm_loss = self.lamda * actor_loss + curiosity_loss
+            actor_icm_loss.backward()
             self.optimizer_actor.step()
 
-            self.optimizer_critic.zero_grad()
             critic_loss = 0.5 * F.mse_loss(state_values, d_r)
+
+            self.optimizer_critic.zero_grad()
             critic_loss.backward()
             self.optimizer_critic.step()
 
-            # SOME PRINT STUFF
+            # CKPT log
             with torch.no_grad():
-                losses_[_] = actor_loss.item()
+                curiosity_losses[i] = curiosity_loss.item()
+                actor_losses[i] = actor_loss.item()
+                critic_losses[i] = critic_loss.item()
 
-        print("Mean ep losses: ", losses_.mean())
-        print("Total ep reward: ", self.mem_buffer.rewards.sum())
         self.actor_old.load_state_dict(self.actor.state_dict())
+        print(self.mem_buffer.rewards.sum())
         self.mem_buffer.clear()
+        # self.save_ckpt(self.mem_buffer.rewards, curiosity_losses.mean(), actor_losses.mean(), critic_losses.mean())
 
     def __eval(self):
         action_prob = self.actor(self.mem_buffer.states)
@@ -144,7 +170,7 @@ class PPOAgent(BaseAgent):
         action_probs = self.mem_buffer.action_probs
         actions = self.mem_buffer.actions
 
-        a_t_hats, phi_t1_hats, phi_t1s, phi_ts = self.ICM(states, next_states, action_probs)
+        a_t_hats, phi_t1_hats, phi_t1s, phi_ts = self.curiosity(states, next_states, action_probs)
 
         r_i_ts = F.mse_loss(phi_t1_hats, phi_t1s, reduction='none').sum(-1)
 
@@ -162,6 +188,7 @@ if __name__ == "__main__":
     height = 64
 
     lr_actor = 0.0005
+    lr_icm = 0.001
     lr_critic = 0.001
 
     # SWITCH THIS IN EQ BATCHES - NO cheating and getting good at only one thing
@@ -169,9 +196,14 @@ if __name__ == "__main__":
 
     actor = PolicyModelEncoder(width, height, env_wrapper.env.action_space.n).cuda()
     critic = PolicyModel(width, height).cuda()
+    icm = IntrinsicCuriosityModule(env_wrapper.env.action_space.n).cuda()
 
-    optimizer_actor = torch.optim.Adam(actor.parameters(), lr=lr_actor)
+    optimizer_actor = torch.optim.Adam([
+        {'params': actor.parameters(), 'lr': lr_actor},
+        {'params': icm.parameters(), 'lr': lr_icm}
+    ])
     optimizer_critic = torch.optim.Adam(critic.parameters(), lr=lr_critic)
 
-    agent = PPOAgent(env_wrapper, actor, critic, optimizer_actor, optimizer_critic)
-    agent.train(450, 400000)
+    agent = PPOAgent(env_wrapper, actor, critic, icm, optimizer_actor, optimizer_critic)
+    # 20000
+    agent.train(400, 200000000)

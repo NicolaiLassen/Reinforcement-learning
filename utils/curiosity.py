@@ -23,10 +23,10 @@ class ICMHead(nn.Module):
         return out
 
 
-# Intrinsic Curiosity Model Reward
-class ICM(nn.Module):
+# Intrinsic Curiosity Module Reward
+class IntrinsicCuriosityModule(nn.Module):
     def __init__(self, action_space_n: int, width: int = 64, height: int = 64) -> None:
-        super(ICM, self).__init__()
+        super(IntrinsicCuriosityModule, self).__init__()
 
         self.head = ICMHead()
         self.state_size = width * height

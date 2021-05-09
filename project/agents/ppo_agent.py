@@ -39,7 +39,6 @@ class PPOAgent(BaseAgent):
                  beta=0.8,
                  eps_c=0.2,
                  loss_entropy_c=0.01,
-                 intrinsic_curiosity_c=0.9,
                  n_max_Times_update=1):
         self.env = env
         self.actor = actor
@@ -64,7 +63,6 @@ class PPOAgent(BaseAgent):
 
         self.eps_c = eps_c
         self.loss_entropy_c = loss_entropy_c
-        self.intrinsic_curiosity_c = intrinsic_curiosity_c
 
     def train(self, max_time_per_batch: int, max_time_steps: int):
         self.mem_buffer = MemBuffer(max_time_per_batch, action_space_n=self.action_space_n)
@@ -132,15 +130,15 @@ class PPOAgent(BaseAgent):
 
             d_r = normalize_dist(self.__discounted_rewards())
             A_T = d_r - state_values.detach()
+
             r_i_ts, r_i_ts_loss, a_t_hat_loss = self.__intrinsic_reward_objective()
+            R_T = A_T + r_i_ts
 
-            R_T = A_T + (r_i_ts * self.intrinsic_curiosity_c)
+            c_s_o_loss = self.__clipped_surrogate_objective(action_log_probs, R_T)  # L_CLIP
+            actor_loss = (- c_s_o_loss + (entropy * self.loss_entropy_c)).mean()  # L_CLIP + entropy
+            critic_loss = (0.5 * torch.pow(state_values - d_r, 2)).mean()  # L_VF
 
-            c_s_o_loss = self.__clipped_surrogate_objective(action_log_probs, R_T)
-
-            actor_loss = (- c_s_o_loss - (entropy * self.loss_entropy_c)).mean()
             curiosity_loss = (1 - (a_t_hat_loss * self.beta) + (r_i_ts_loss * self.beta))
-            critic_loss = F.mse_loss(state_values, d_r)
 
             self.optimizer.zero_grad()
             total_loss = self.lamda * (actor_loss + critic_loss) + curiosity_loss
@@ -150,7 +148,7 @@ class PPOAgent(BaseAgent):
             # CKPT log
             with torch.no_grad():
                 curiosity_losses[i] = curiosity_loss.item()
-                intrinsic_rewards[i] = R_T.sum()
+                intrinsic_rewards[i] = r_i_ts.item()
                 actor_losses[i] = actor_loss.item()
                 critic_losses[i] = critic_loss.item()
 

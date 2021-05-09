@@ -162,7 +162,6 @@ class PPOAgent(BaseAgent):
             self.critic_loss_ckpt.append(critic_losses.sum().item())
             self.reward_ckpt.append(self.mem_buffer.rewards.sum().item())
         self.save_ckpt()
-        print(self.mem_buffer.rewards.sum())
 
         self.actor_old.load_state_dict(self.actor.state_dict())
         self.mem_buffer.clear()

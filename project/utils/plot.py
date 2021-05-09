@@ -15,7 +15,7 @@ def smooth(y, box_pts):
 
 
 if __name__ == '__main__':
-    rewards = torch.load('../ckpt_ppo_vit/starpilot_easy/rewards.ckpt')[2:]
+    rewards = torch.load('../ckpt_ppo_conv/starpilot_easy/rewards.ckpt')[2:]
     # rewards = torch.load('../ckpt_ppo_vit/starpilot_easy/rewards.ckpt')
 
     print(len(rewards) * 5000)

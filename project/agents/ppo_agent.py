@@ -135,13 +135,14 @@ class PPOAgent(BaseAgent):
             R_T = A_T + r_i_ts
 
             c_s_o_loss = self.__clipped_surrogate_objective(action_log_probs, R_T)  # L_CLIP
-            actor_loss = (- c_s_o_loss + (entropy * self.loss_entropy_c)).mean()  # L_CLIP + entropy
-            critic_loss = (0.5 * torch.pow(state_values - d_r, 2)).mean()  # L_VF
+            actor_loss = c_s_o_loss.mean()  # L_CLIP - entropy
+            entropy_bonus = entropy * self.loss_entropy_c  # c2 S[]
+            critic_loss = (0.5 * torch.pow(state_values - d_r, 2)).mean() + entropy_bonus  # c1 L_VF
 
             curiosity_loss = (1 - (a_t_hat_loss * self.beta) + (r_i_ts_loss * self.beta))
 
             self.optimizer.zero_grad()
-            total_loss = self.lamda * (actor_loss + critic_loss) + curiosity_loss
+            total_loss = (self.lamda * actor_loss) - critic_loss + entropy_bonus + curiosity_loss
             total_loss.backward()
             self.optimizer.step()
 

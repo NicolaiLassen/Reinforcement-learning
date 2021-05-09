@@ -27,9 +27,7 @@
       <change beforePath="$PROJECT_DIR$/../.idea/modules.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../.idea/rl.iml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../.idea/vcs.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/policy_models.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/policy_models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ppo_train.sh" beforeDir="false" afterPath="$PROJECT_DIR$/ppo_train.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../utils/curiosity.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../utils/mem_buffer.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../utils/normalize_dist.py" beforeDir="false" />
@@ -198,7 +196,7 @@
       <updated>1618165131630</updated>
       <workItem from="1620511005079" duration="8392000" />
       <workItem from="1620519725662" duration="3232000" />
-      <workItem from="1620556929915" duration="5568000" />
+      <workItem from="1620556929915" duration="5716000" />
     </task>
     <servers />
   </component>

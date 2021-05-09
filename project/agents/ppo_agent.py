@@ -6,10 +6,10 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
 
+from agents.base_agent import BaseAgent
 from environment.env_wrapper import EnvWrapper
 from utils.mem_buffer import MemBuffer
 from utils.normalize_dist import normalize_dist
-from .base_agent import BaseAgent
 
 
 class PPOAgent(BaseAgent):
@@ -32,14 +32,12 @@ class PPOAgent(BaseAgent):
                  curiosity: nn.Module = None,
                  optimizer: optim.Optimizer = None,
                  name="vit",  # vit or conv
-                 n_acc_gradient=20,
+                 n_acc_gradient=10,
                  gamma=0.9,
-                 lamda=0.5,
                  eta=0.5,
                  beta=0.8,
                  eps_c=0.2,
                  loss_entropy_c=0.01,
-                 intrinsic_curiosity_c=0.9,
                  n_max_Times_update=1):
         self.env = env
         self.actor = actor
@@ -58,13 +56,11 @@ class PPOAgent(BaseAgent):
         self.n_max_Times_update = n_max_Times_update
         # Hyper c
         self.gamma = gamma
-        self.lamda = lamda
         self.eta = eta
         self.beta = beta
 
         self.eps_c = eps_c
         self.loss_entropy_c = loss_entropy_c
-        self.intrinsic_curiosity_c = intrinsic_curiosity_c
 
     def train(self, max_time_per_batch: int, max_time_steps: int):
         self.mem_buffer = MemBuffer(max_time_per_batch, action_space_n=self.action_space_n)
@@ -77,7 +73,8 @@ class PPOAgent(BaseAgent):
                 s = s1
                 action, probs, log_prob = self.act(s)
                 s1, r, d, _ = self.env.step(action)
-                self.mem_buffer.set_next(s, s1, r, action, probs, log_prob, d, self.mem_buffer.get_mask(d))
+                v = self.critic(s).detach()
+                self.mem_buffer.set_next(s, s1, v, r, action, probs, log_prob, d)
                 if t % update_every == 0:
                     self.__update()
 
@@ -131,28 +128,31 @@ class PPOAgent(BaseAgent):
             action_log_probs, state_values, entropy = self.__eval()
 
             d_r = normalize_dist(self.__discounted_rewards())
-            A_T = d_r - state_values.detach()
+            A_T = self.__advantages(d_r, state_values)
+
             r_i_ts, r_i_ts_loss, a_t_hat_loss = self.__intrinsic_reward_objective()
+            R_T = A_T + r_i_ts
 
-            R_T = A_T + (r_i_ts * self.intrinsic_curiosity_c)
+            actor_loss = self.__clipped_surrogate_objective(action_log_probs, R_T)  # L^CLIP
+            critic_loss = (
+                    0.5 * torch.pow((A_T + self.mem_buffer.state_values) - state_values, 2)).mean()  # E # c1 L^VF
 
-            c_s_o_loss = self.__clipped_surrogate_objective(action_log_probs, R_T)
+            entropy_bonus = entropy * self.loss_entropy_c  # c2 S[]
 
-            actor_loss = (- c_s_o_loss - (entropy * self.loss_entropy_c)).mean()
             curiosity_loss = (1 - (a_t_hat_loss * self.beta) + (r_i_ts_loss * self.beta))
-            critic_loss = F.mse_loss(state_values, d_r)
 
             self.optimizer.zero_grad()
-            total_loss = self.lamda * (actor_loss + critic_loss) + curiosity_loss
+            # Gradient ascent -(actor_loss - critic_loss + entropy_bonus)
+            total_loss = (- actor_loss + critic_loss - entropy_bonus).mean() + curiosity_loss
             total_loss.backward()
             self.optimizer.step()
 
             # CKPT log
             with torch.no_grad():
-                curiosity_losses[i] = curiosity_loss.item()
-                intrinsic_rewards[i] = R_T.sum()
-                actor_losses[i] = actor_loss.item()
-                critic_losses[i] = critic_loss.item()
+                intrinsic_rewards[i] = r_i_ts.mean().item()
+                curiosity_losses[i] = curiosity_loss.mean().item()
+                actor_losses[i] = actor_loss.mean().item()
+                critic_losses[i] = critic_loss.mean().item()
 
         # Save CKPT
         with torch.no_grad():
@@ -162,6 +162,7 @@ class PPOAgent(BaseAgent):
             self.critic_loss_ckpt.append(critic_losses.sum().item())
             self.reward_ckpt.append(self.mem_buffer.rewards.sum().item())
         self.save_ckpt()
+        print(self.mem_buffer.rewards.sum())
 
         self.actor_old.load_state_dict(self.actor.state_dict())
         self.mem_buffer.clear()
@@ -171,17 +172,28 @@ class PPOAgent(BaseAgent):
         dist = Categorical(action_prob)
         action_log_prob = dist.log_prob(self.mem_buffer.actions)
         state_values = self.critic(self.mem_buffer.states)
-        return action_log_prob, state_values.squeeze(1), dist.entropy()  # Bregman divergence
+        return action_log_prob, state_values.squeeze(1), dist.entropy()
+
+    def __advantages(self, discounted_rewards, state_values):
+        advantages = torch.zeros(len(discounted_rewards))
+        T = self.mem_buffer.max_length - 1
+        last_state_value = state_values[T]
+        t = 0
+        for discounted_reward in discounted_rewards:
+            advantages[t] = discounted_reward - state_values[t] + last_state_value * (
+                    self.gamma ** (T - t))
+            t += 1
+        return advantages.float().cuda()
 
     def __discounted_rewards(self):
-        discounted_rewards = []
+        discounted_rewards = torch.zeros(len(self.mem_buffer.rewards))
         running_reward = 0
-
+        t = 0
         for r, d in zip(reversed(self.mem_buffer.rewards), reversed(self.mem_buffer.done)):
             running_reward = r + (running_reward * self.gamma) * (1. - d)  # Zero out done states
-            discounted_rewards.append(running_reward)
-
-        return torch.stack(discounted_rewards).float().cuda()
+            discounted_rewards[t] = running_reward
+            t += 1
+        return discounted_rewards.float().cuda()
 
     def __intrinsic_reward_objective(self):
         next_states = self.mem_buffer.next_states
@@ -196,6 +208,7 @@ class PPOAgent(BaseAgent):
         return (self.eta * r_i_ts).detach(), r_i_ts.mean(), F.cross_entropy(a_t_hats, actions)
 
     def __clipped_surrogate_objective(self, action_log_probs, R_T):
+        # torch.exp(action_log_probs) / torch.exp(self.mem_buffer.action_log_prob)
         r_T_theta = torch.exp(action_log_probs - self.mem_buffer.action_log_prob)
         r_T_c_theta = torch.clamp(r_T_theta, min=1 - self.eps_c, max=1 + self.eps_c)
         return torch.min(r_T_theta * R_T, r_T_c_theta * R_T).mean()  # E

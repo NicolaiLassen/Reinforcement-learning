@@ -4,12 +4,16 @@ import torch
 
 from agents.ppo_agent import PPOAgent
 from environment.env_wrapper import EnvWrapper
-from models.policy_models import PolicyModelVIT
+from models.policy_models import PolicyModelVIT, PolicyModelConv
 
 
-def test_agent_ppo(actor, env, test_range: List[int] = [200, 400]):
+def test_agent_ppo(actor, test_range: List[int] = [200, 400]):
     # TODO Test for each env on a test set: 200..400
+
+    all_rewards = []
+    all_steps_n = []
     for i in range(test_range[0], test_range[1]):
+        env = EnvWrapper('procgen:procgen-starpilot-v0', start_level=i, num_levels=1)
         agent = PPOAgent(env, actor)
         s1 = env.reset()
         rewards = []
@@ -22,17 +26,21 @@ def test_agent_ppo(actor, env, test_range: List[int] = [200, 400]):
             rewards.append(r)
             if d:
                 break
-        print("Level: {}, N Steps: {}, Total Reward: {}".format(i, steps_before_done, sum(rewards)))
+        all_rewards.append(sum(rewards))
+        all_steps_n.append(steps_before_done)
+
+    return all_rewards
 
 
 if __name__ == '__main__':
     width = 64
     height = 64
 
-    env = EnvWrapper('procgen:procgen-starpilot-v0', start_level=i, num_levels=1)
-    actor = PolicyModelVIT(width, height, env.env.action_space.n).cuda()
-    actor.eval()
-    actor.load_state_dict(torch.load("path"))
-    test_agent_ppo(actor, env)
+    actor_conv = PolicyModelConv(width, height, 15).cuda()
+    actor_conv.load_state_dict(torch.load("ckpt_ppo_conv/starpilot_easy/actor_100.ckpt"))
+    actor_conv.eval()
+    test_agent_ppo(actor_conv, test_range=[0, 200])
+
+    actor_vit = PolicyModelVIT(width, height, 15).cuda()
 
     # actor = PolicyModelConv(width, height, env_wrapper.env.action_space.n).cuda()

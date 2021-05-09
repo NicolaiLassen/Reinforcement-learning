@@ -14,8 +14,8 @@ def create_dir(directory):
 
 
 def test_agent_ppo():
-    # TODO Test for each env start_0..500
-    for i in range(500):
+    # TODO Test for each env start_0..200
+    for i in range(200):
         env = EnvWrapper('procgen:procgen-starpilot-v0', start_level=i, num_levels=1)
         width = 64
         height = 64

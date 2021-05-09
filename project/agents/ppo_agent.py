@@ -31,7 +31,7 @@ class PPOAgent(BaseAgent):
                  critic: nn.Module = None,
                  curiosity: nn.Module = None,
                  optimizer: optim.Optimizer = None,
-                 n_acc_gradient=10,
+                 n_acc_gradient=20,
                  gamma=0.9,
                  lamda=0.5,
                  eta=0.5,

@@ -64,5 +64,6 @@ if __name__ == "__main__":
         {'params': critic.parameters(), 'lr': lr_critic}
     ])
 
+    # https://www.aicrowd.com/challenges/neurips-2020-procgen-competition
     agent = PPOAgent(env_wrapper, actor, critic, icm, optimizer)
-    agent.train(2000, 200000000)
+    agent.train(2000, 10000000)

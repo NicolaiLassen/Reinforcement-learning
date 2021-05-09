@@ -10,7 +10,8 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 ## TODO TAKE BATCH OF FRAMES 4-8
 class EnvWrapper(gym.Env):
     def __init__(self, environment,
-                 num_levels=500,  # limted time for train lower bound 500
+                 num_levels=200,  # limted time hard limit 24 hour
+                 # https://www.aicrowd.com/challenges/neurips-2020-procgen-competition
                  # Procgen environments require training on 500–1000 different levels before they can generalize to new levels
                  difficulty='easy',  # Let's train on easy for testing
                  start_level=0,

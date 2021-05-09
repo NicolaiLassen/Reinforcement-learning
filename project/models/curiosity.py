@@ -52,3 +52,7 @@ class IntrinsicCuriosityModule(nn.Module):
         phi_t1_hat = self.forward_model(torch.cat((phi_t, action), 1))
         a_t_hat = F.softmax(self.inverse_model(torch.cat((phi_t, phi_t1), 1)), dim=-1)
         return a_t_hat, phi_t1_hat, phi_t1, phi_t
+
+if __name__ == '__main__':
+    print(torch.load('../ckpt/rewards.ckpt'))
+    print(len(torch.load('../ckpt/rewards.ckpt')) * 2000)

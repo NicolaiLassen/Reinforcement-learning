@@ -144,9 +144,6 @@ class PPOAgent(BaseAgent):
                 actor_losses[i] = actor_loss.item()
                 critic_losses[i] = critic_loss.item()
 
-        self.actor_old.load_state_dict(self.actor.state_dict())
-        self.mem_buffer.clear()
-
         # Save CKPT
         with torch.no_grad():
             self.intrinsic_reward_ckpt.append(intrinsic_rewards.sum().item())
@@ -155,6 +152,9 @@ class PPOAgent(BaseAgent):
             self.critic_loss_ckpt.append(critic_losses.sum().item())
             self.reward_ckpt.append(self.mem_buffer.rewards.sum().item())
         self.save_ckpt()
+
+        self.actor_old.load_state_dict(self.actor.state_dict())
+        self.mem_buffer.clear()
 
     def __eval(self):
         action_prob = self.actor(self.mem_buffer.states)

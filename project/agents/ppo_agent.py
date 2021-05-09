@@ -17,7 +17,7 @@ class PPOAgent(BaseAgent):
 
     # counters ckpt
     t_update = 0  # t * 1000
-    model_save_every = 100  # 8000000 / 2000 / 100
+    model_save_every = 100  # 8000000 / 5000 / 100
 
     intrinsic_reward_ckpt = []
     curiosity_loss_ckpt = []

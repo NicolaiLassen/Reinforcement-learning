@@ -6,10 +6,10 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
 
-from environment.env_wrapper import EnvWrapper
+from project.environment.env_wrapper import EnvWrapper
 from utils.mem_buffer import MemBuffer
 from utils.normalize_dist import normalize_dist
-from .base_agent import BaseAgent
+from project.agents.base_agent import BaseAgent
 
 
 class PPOAgent(BaseAgent):
@@ -131,7 +131,10 @@ class PPOAgent(BaseAgent):
             action_log_probs, state_values, entropy = self.__eval()
 
             d_r = normalize_dist(self.__discounted_rewards())
-            A_T = d_r - state_values.detach()
+
+            A_T = self.__calc_advantages(d_r, state_values)
+            # A_T = d_r - state_values.detach()
+
             r_i_ts, r_i_ts_loss, a_t_hat_loss = self.__intrinsic_reward_objective()
 
             R_T = A_T + (r_i_ts * self.intrinsic_curiosity_c)
@@ -172,6 +175,20 @@ class PPOAgent(BaseAgent):
         action_log_prob = dist.log_prob(self.mem_buffer.actions)
         state_values = self.critic(self.mem_buffer.states)
         return action_log_prob, state_values.squeeze(1), dist.entropy()  # Bregman divergence
+
+    def __calc_advantages(self, discounted_rewards, state_values):
+        advantages = []
+        t = 0
+        T = self.mem_buffer.max_length-1
+        last_state_value = state_values[T]
+
+        for i in discounted_rewards:
+            advantages.append(i - state_values[t] + last_state_value * (self.gamma ** (T-t)))
+            t += 1
+        with torch.no_grad():
+            advantages = torch.stack(advantages).float().cuda()
+        return advantages
+
 
     def __discounted_rewards(self):
         discounted_rewards = []

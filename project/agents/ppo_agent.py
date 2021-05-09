@@ -17,7 +17,7 @@ class PPOAgent(BaseAgent):
 
     # counters ckpt
     t_update = 0  # t * 1000
-    model_save_every = 1000  # 200000000 / 2000 / 1000
+    model_save_every = 100  # 8000000 / 2000 / 100
 
     intrinsic_reward_ckpt = []
     curiosity_loss_ckpt = []
@@ -31,6 +31,7 @@ class PPOAgent(BaseAgent):
                  critic: nn.Module = None,
                  curiosity: nn.Module = None,
                  optimizer: optim.Optimizer = None,
+                 name="vit",  # vit or conv
                  n_acc_gradient=20,
                  gamma=0.9,
                  lamda=0.5,
@@ -46,6 +47,7 @@ class PPOAgent(BaseAgent):
         self.actor_old.load_state_dict(actor.state_dict())
         self.critic = critic
 
+        self.name = name
         self.optimizer = optimizer
 
         self.action_space_n = env.env.action_space.n
@@ -87,13 +89,28 @@ class PPOAgent(BaseAgent):
         return action.detach().item(), action_dist.probs.detach(), action_dist_log_prob.detach()
 
     def save_ckpt(self):
+
+        base = "ckpt_ppo_{}/starpilot_easy".format(self.name)
+
         if self.t_update % self.model_save_every == 0:
-            torch.save(self.actor_old.state_dict(), "ckpt_ppo/actor_{}.ckpt".format(self.t_update))
-        torch.save(torch.tensor(self.curiosity_loss_ckpt), "ckpt_ppo/losses_curiosity.ckpt")
-        torch.save(torch.tensor(self.intrinsic_reward_ckpt), "ckpt_ppo/intrinsic_rewards.ckpt")
-        torch.save(torch.tensor(self.actor_loss_ckpt), "ckpt_ppo/losses_actor.ckpt")
-        torch.save(torch.tensor(self.critic_loss_ckpt), "ckpt_ppo/losses_critic.ckpt")
-        torch.save(torch.tensor(self.reward_ckpt), "ckpt_ppo/rewards.ckpt")
+            torch.save(self.actor_old.state_dict(),
+                       "{}/actor_{}.ckpt".format(base, self.t_update))
+
+        torch.save(torch.tensor(self.curiosity_loss_ckpt),
+                   "{}/losses_curiosity.ckpt".format(base, self.name))
+
+        torch.save(torch.tensor(self.intrinsic_reward_ckpt),
+                   "{}/intrinsic_rewards.ckpt".format(base, self.name))
+
+        torch.save(torch.tensor(self.actor_loss_ckpt),
+                   "{}/losses_actor.ckpt".format(base, self.name))
+
+        torch.save(torch.tensor(self.critic_loss_ckpt),
+                   "{}/losses_critic.ckpt".format(base, self.name))
+
+        torch.save(torch.tensor(self.reward_ckpt),
+                   "{}/rewards.ckpt".format(base, self.name))
+
         self.t_update += 1
 
     def load_actor(self, path):

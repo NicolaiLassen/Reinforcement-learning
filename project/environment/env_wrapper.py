@@ -13,7 +13,7 @@ class EnvWrapper(gym.Env):
                  num_levels=200,  # limted time hard limit 24 hour
                  # https://www.aicrowd.com/challenges/neurips-2020-procgen-competition
                  # Procgen environments require training on 500–1000 different levels before they can generalize to new levels
-                 difficulty='easy',  # Let's train on easy for testing
+                 difficulty='easy',  # Let's train on easy for testing faster against DQN
                  start_level=0,
                  width: int = 64,
                  height: int = 64,

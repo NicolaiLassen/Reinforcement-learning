@@ -30,9 +30,9 @@ class PolicyModel(nn.Module):
 
 
 # Actor Model
-class PolicyModelEncoder(nn.Module):
+class PolicyModelVIT(nn.Module):
     def __init__(self, width: int, height: int, action_dim: int, motion_blur: int = 4):
-        super(PolicyModelEncoder, self).__init__()
+        super(PolicyModelVIT, self).__init__()
 
         self.width = width
         self.height = height
@@ -56,9 +56,25 @@ class PolicyModelEncoder(nn.Module):
         self.fc_out = nn.Linear(self.encoder_out_dim, action_dim)
         self.activation = nn.ReLU()
 
-    def forward(self, x, mask=None):
+    def forward(self, x):
         out = x.view(-1, self.motion_blur, self.width, self.height)
         out = self.image_encoder(out)
+        out = self.fc_1(out)
+        out = self.activation(out)
+        out = self.fc_out(out)
+        return F.log_softmax(out, dim=-1)
+
+
+class PolicyModelConv(nn.Module):
+    def __init__(self, width: int, height: int, action_dim: int, motion_blur: int = 4):
+        super(PolicyModelConv, self).__init__()
+
+        # Conv here
+        self.fc_1 = nn.Linear(self.encoder_out_dim, self.encoder_out_dim)
+        self.fc_out = nn.Linear(self.encoder_out_dim, action_dim)
+        self.activation = nn.ReLU()
+
+    def forward(self, x):
         out = self.fc_1(out)
         out = self.activation(out)
         out = self.fc_out(out)

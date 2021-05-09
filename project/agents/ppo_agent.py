@@ -8,11 +8,8 @@ from torch.distributions import Categorical
 
 from environment.env_wrapper import EnvWrapper
 from utils.mem_buffer import MemBuffer
+from utils.normalize_dist import normalize_dist
 from .base_agent import BaseAgent
-
-def normalize_dist(t):
-    # Normalize  # PLZ DON'T BLOW MY GRADIENT
-    return (t - t.mean()) / (t.std() + 1e-10)
 
 
 class PPOAgent(BaseAgent):

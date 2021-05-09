@@ -14,9 +14,19 @@ def create_dir(directory):
         os.makedirs(directory)
 
 
+def get_n_params(model):
+    pp = 0
+    for p in list(model.parameters()):
+        nn = 1
+        for s in list(p.size()):
+            nn = nn * s
+        pp += nn
+    return pp
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-m", "--model", default="conv", help="PPO model")
+    parser.add_argument("-m", "--model", default="vit", help="PPO model")
     args = parser.parse_args()
 
     print(args.model)
@@ -55,5 +65,5 @@ if __name__ == "__main__":
     # Challenge generalize for 8 million time steps cover 200 levels
     # max batch size GPU limit 64x64 * 2000 * nets_size
     agent = PPOAgent(env_wrapper, actor, critic, icm, optimizer, name=args.model)
-    # SAVE MODEL EVERY 8000000 / 2000 / 100
-    agent.train(2000, 8000000)
+    # SAVE MODEL EVERY 8000000 / 5000 / 100
+    agent.train(5000, 8000000)

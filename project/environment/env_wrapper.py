@@ -13,17 +13,15 @@ class EnvWrapper(gym.Env):
                  num_levels=200,  # limted time hard limit 24 hour
                  # https://www.aicrowd.com/challenges/neurips-2020-procgen-competition
                  # Procgen environments require training on 500–1000 different levels before they can generalize to new levels
-                 difficulty='easy',  # Let's train on easy for testing
+                 difficulty='easy',  # Let's train on easy for testing faster against DQN
                  start_level=0,
                  width: int = 64,
                  height: int = 64,
-                 frameskip: int = 2,
                  motion_blur: int = 4):
         self.width = width
         self.height = height
 
         self.env = gym.make(environment, start_level=start_level, num_levels=num_levels, distribution_mode=difficulty)
-        self.env.frameskip = frameskip
         self.motion_blur = motion_blur
 
         self.obs_transformer = transforms.Compose([

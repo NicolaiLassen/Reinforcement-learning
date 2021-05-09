@@ -17,13 +17,11 @@ class EnvWrapper(gym.Env):
                  start_level=0,
                  width: int = 64,
                  height: int = 64,
-                 frameskip: int = 2,
                  motion_blur: int = 4):
         self.width = width
         self.height = height
 
         self.env = gym.make(environment, start_level=start_level, num_levels=num_levels, distribution_mode=difficulty)
-        self.env.frameskip = frameskip
         self.motion_blur = motion_blur
 
         self.obs_transformer = transforms.Compose([

@@ -45,7 +45,7 @@ class PolicyModelEncoder(nn.Module):
             patch_size=16,
             num_classes=self.encoder_out_dim,
             dim=512,
-            depth=4,
+            depth=3,
             channels=4,
             heads=4,
             mlp_dim=self.mlp_dim,

@@ -64,13 +64,13 @@ class PPOAgent(BaseAgent):
         self.loss_entropy_c = loss_entropy_c
         self.intrinsic_curiosity_c = intrinsic_curiosity_c
 
-    def train(self, max_time_per_step: int, max_time_steps: int):
-        self.mem_buffer = MemBuffer(max_time_per_step, action_space_n=self.action_space_n)
-        update_every = max_time_per_step * self.n_max_Times_update  # TODO: BATCH
+    def train(self, max_time_per_batch: int, max_time_steps: int):
+        self.mem_buffer = MemBuffer(max_time_per_batch, action_space_n=self.action_space_n)
+        update_every = max_time_per_batch * self.n_max_Times_update  # TODO: BATCH
         t = 0
         s1 = self.env.reset()
         while t < max_time_steps:
-            for ep_T in range(max_time_per_step + 1):
+            for ep_T in range(max_time_per_batch + 1):
                 t += 1
                 s = s1
                 action, probs, log_prob = self.act(s)

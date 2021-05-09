@@ -44,7 +44,7 @@ def test_agent_dqn():
 
 if __name__ == "__main__":
     create_dir("./ckpt_ppo")
-    bach_size = 1
+
     width = 64
     height = 64
 

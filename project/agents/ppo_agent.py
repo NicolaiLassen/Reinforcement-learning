@@ -91,8 +91,6 @@ class PPOAgent(BaseAgent):
     def save_ckpt(self):
         if self.t_update % self.model_save_every == 0:
             torch.save(self.actor_old.state_dict(), "ckpt/actor_{}.ckpt".format(self.t_update))
-
-        print(self.curiosity_loss_ckpt)
         torch.save(torch.tensor(self.curiosity_loss_ckpt), "ckpt/losses_curiosity.ckpt")
         torch.save(torch.tensor(self.intrinsic_reward_ckpt), "ckpt/intrinsic_rewards.ckpt")
         torch.save(torch.tensor(self.actor_loss_ckpt), "ckpt/losses_actor.ckpt")

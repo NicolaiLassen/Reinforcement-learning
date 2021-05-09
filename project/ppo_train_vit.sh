@@ -1,7 +1,7 @@
 #!/bin/sh
  #BSUB -q gpuv100
  #BSUB -gpu "num=1"
- #BSUB -J ppo
+ #BSUB -J ppo_vit
  #BSUB -n 1
  #BSUB -W 24:00
  #BSUB -R "span[hosts=1]"

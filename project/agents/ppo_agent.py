@@ -1,5 +1,4 @@
 import copy
-import pickle
 
 import torch
 import torch.nn as nn
@@ -11,15 +10,23 @@ from environment.env_wrapper import EnvWrapper
 from utils.mem_buffer import MemBuffer
 from .base_agent import BaseAgent
 
+def normalize_dist(t):
+    # Normalize  # PLZ DON'T BLOW MY GRADIENT
+    return (t - t.mean()) / (t.std() + 1e-10)
+
 
 class PPOAgent(BaseAgent):
     mem_buffer: MemBuffer = None  # only used in traning
 
     # counters ckpt
-    t_0_ckpt = 0
-    t_1_ckpt = 0
-    t_update = 0
-    model_save_every = 200  # 200000000 / 5000 / 200 = 200
+    t_update = 0  # t * 1000
+    model_save_every = 1000  # 200000000 / 2000 / 1000
+
+    intrinsic_reward_ckpt = []
+    curiosity_loss_ckpt = []
+    actor_loss_ckpt = []
+    critic_loss_ckpt = []
+    reward_ckpt = []
 
     def __init__(self,
                  env: EnvWrapper,
@@ -75,9 +82,7 @@ class PPOAgent(BaseAgent):
                 s1, r, d, _ = self.env.step(action)
                 self.mem_buffer.set_next(s, s1, r, action, probs, log_prob, d, self.mem_buffer.get_mask(d))
                 if t % update_every == 0:
-                    self.t_1_ckpt = t
                     self.__update()
-                    self.t_0_ckpt = t
 
     def act(self, state):
         action_logs_prob = self.actor_old(state)
@@ -86,19 +91,16 @@ class PPOAgent(BaseAgent):
         action_dist_log_prob = action_dist.log_prob(action)
         return action.detach().item(), action_dist.probs.detach(), action_dist_log_prob.detach()
 
-    def save_ckpt(self, rewards, intrinsic_rewards, curiosity_loss, actor_loss, critic_loss):
-
+    def save_ckpt(self):
         if self.t_update % self.model_save_every == 0:
-            torch.save(self.actor_old.state_dict(), "ckpt/actor_{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
+            torch.save(self.actor_old.state_dict(), "ckpt/actor_{}.ckpt".format(self.t_update))
 
-        torch.save(curiosity_loss, "ckpt/losses_curiosity/{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
-        torch.save(intrinsic_rewards, "ckpt/intrinsic_rewards/{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
-        torch.save(actor_loss, "ckpt/losses_actor/{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
-        torch.save(critic_loss, "ckpt/losses_critic/{}_{}.ckpt".format(self.t_0_ckpt, self.t_1_ckpt))
-
-        with open('ckpt/rewards/{}_{}.pkl'.format(self.t_0_ckpt, self.t_1_ckpt), 'wb') as handle:
-            pickle.dump(rewards, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
+        print(self.curiosity_loss_ckpt)
+        torch.save(torch.tensor(self.curiosity_loss_ckpt), "ckpt/losses_curiosity.ckpt")
+        torch.save(torch.tensor(self.intrinsic_reward_ckpt), "ckpt/intrinsic_rewards.ckpt")
+        torch.save(torch.tensor(self.actor_loss_ckpt), "ckpt/losses_actor.ckpt")
+        torch.save(torch.tensor(self.critic_loss_ckpt), "ckpt/losses_critic.ckpt")
+        torch.save(torch.tensor(self.reward_ckpt), "ckpt/rewards.ckpt")
         self.t_update += 1
 
     def load_actor(self, path):
@@ -118,7 +120,7 @@ class PPOAgent(BaseAgent):
 
             action_log_probs, state_values, entropy = self.__eval()
 
-            d_r = self.__discounted_rewards()
+            d_r = normalize_dist(self.__discounted_rewards())
             A_T = d_r - state_values.detach()
             r_i_ts, r_i_ts_loss, a_t_hat_loss = self.__intrinsic_reward_objective()
 
@@ -141,19 +143,23 @@ class PPOAgent(BaseAgent):
             self.optimizer_critic.step()
 
             # CKPT log
+            print(R_T.sum())
             with torch.no_grad():
                 curiosity_losses[i] = curiosity_loss.item()
-                intrinsic_rewards[i] = R_T
+                intrinsic_rewards[i] = R_T.sum()
                 actor_losses[i] = actor_loss.item()
                 critic_losses[i] = critic_loss.item()
 
         self.actor_old.load_state_dict(self.actor.state_dict())
         self.mem_buffer.clear()
-        self.save_ckpt(self.mem_buffer.rewards.sum(),
-                       intrinsic_rewards.sum(),
-                       curiosity_losses.mean(),
-                       actor_losses.mean(),
-                       critic_losses.mean())
+
+        # Save CKPT
+        self.intrinsic_reward_ckpt.append(intrinsic_rewards.sum().item())
+        self.curiosity_loss_ckpt.append(curiosity_losses.sum().item())
+        self.actor_loss_ckpt.append(actor_losses.sum().item())
+        self.critic_loss_ckpt.append(critic_losses.sum().item())
+        self.reward_ckpt.append(self.mem_buffer.rewards.sum().item())
+        self.save_ckpt()
 
     def __eval(self):
         action_prob = self.actor(self.mem_buffer.states)

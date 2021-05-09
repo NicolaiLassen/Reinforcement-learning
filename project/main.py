@@ -14,11 +14,7 @@ def create_dir(directory):
 
 
 if __name__ == "__main__":
-    create_dir("./ckpt/losses_curiosity")
-    create_dir("./ckpt/losses_actor")
-    create_dir("./ckpt/losses_critic")
-    create_dir("./ckpt/rewards")
-
+    create_dir("./ckpt")
     bach_size = 1
     width = 64
     height = 64
@@ -43,5 +39,5 @@ if __name__ == "__main__":
     agent = PPOAgent(env_wrapper, actor, critic, icm, optimizer_actor, optimizer_critic)
 
     # counters ckpt
-    # model_save_every = 20 # 200000000 / 5000 / 200 = 200
-    agent.train(5000, 200000000)
+    # model_save_every = 20 # 200000000 / 2000 / 1000
+    agent.train(2000, 200000000)

@@ -28,10 +28,9 @@ class PPOAgent(BaseAgent):
     def __init__(self,
                  env: EnvWrapper,
                  actor: nn.Module,
-                 critic: nn.Module,
-                 curiosity: nn.Module,
-                 optimizer_actor: optim.Optimizer,
-                 optimizer_critic: optim.Optimizer,
+                 critic: nn.Module = None,
+                 curiosity: nn.Module = None,
+                 optimizer: optim.Optimizer = None,
                  n_acc_gradient=10,
                  gamma=0.9,
                  lamda=0.5,
@@ -47,8 +46,7 @@ class PPOAgent(BaseAgent):
         self.actor_old.load_state_dict(actor.state_dict())
         self.critic = critic
 
-        self.optimizer_actor = optimizer_actor
-        self.optimizer_critic = optimizer_critic
+        self.optimizer = optimizer
 
         self.action_space_n = env.env.action_space.n
         # Curiosity
@@ -90,12 +88,12 @@ class PPOAgent(BaseAgent):
 
     def save_ckpt(self):
         if self.t_update % self.model_save_every == 0:
-            torch.save(self.actor_old.state_dict(), "ckpt/actor_{}.ckpt".format(self.t_update))
-        torch.save(torch.tensor(self.curiosity_loss_ckpt), "ckpt/losses_curiosity.ckpt")
-        torch.save(torch.tensor(self.intrinsic_reward_ckpt), "ckpt/intrinsic_rewards.ckpt")
-        torch.save(torch.tensor(self.actor_loss_ckpt), "ckpt/losses_actor.ckpt")
-        torch.save(torch.tensor(self.critic_loss_ckpt), "ckpt/losses_critic.ckpt")
-        torch.save(torch.tensor(self.reward_ckpt), "ckpt/rewards.ckpt")
+            torch.save(self.actor_old.state_dict(), "ckpt_ppo/actor_{}.ckpt".format(self.t_update))
+        torch.save(torch.tensor(self.curiosity_loss_ckpt), "ckpt_ppo/losses_curiosity.ckpt")
+        torch.save(torch.tensor(self.intrinsic_reward_ckpt), "ckpt_ppo/intrinsic_rewards.ckpt")
+        torch.save(torch.tensor(self.actor_loss_ckpt), "ckpt_ppo/losses_actor.ckpt")
+        torch.save(torch.tensor(self.critic_loss_ckpt), "ckpt_ppo/losses_critic.ckpt")
+        torch.save(torch.tensor(self.reward_ckpt), "ckpt_ppo/rewards.ckpt")
         self.t_update += 1
 
     def load_actor(self, path):
@@ -125,17 +123,12 @@ class PPOAgent(BaseAgent):
 
             actor_loss = (- c_s_o_loss - (entropy * self.loss_entropy_c)).mean()
             curiosity_loss = (1 - (a_t_hat_loss * self.beta) + (r_i_ts_loss * self.beta))
+            critic_loss = F.mse_loss(state_values, d_r)
 
-            self.optimizer_actor.zero_grad()
-            actor_icm_loss = self.lamda * actor_loss + curiosity_loss
-            actor_icm_loss.backward()
-            self.optimizer_actor.step()
-
-            critic_loss = 0.5 * F.mse_loss(state_values, d_r)
-
-            self.optimizer_critic.zero_grad()
-            critic_loss.backward()
-            self.optimizer_critic.step()
+            self.optimizer.zero_grad()
+            total_loss = self.lamda * (actor_loss + critic_loss) + curiosity_loss
+            total_loss.backward()
+            self.optimizer.step()
 
             # CKPT log
             with torch.no_grad():

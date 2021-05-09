@@ -10,10 +10,10 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 ## TODO TAKE BATCH OF FRAMES 4-8
 class EnvWrapper(gym.Env):
     def __init__(self, environment,
-                 num_levels=1000,
+                 num_levels=500,  # limted time for train lower bound 500
                  # Procgen environments require training on 500–1000 different levels before they can generalize to new levels
-                 difficulty='hard',
-                 seq_len=1,
+                 difficulty='easy',  # Let's train on easy for testing
+                 start_level=0,
                  width: int = 64,
                  height: int = 64,
                  frameskip: int = 2,
@@ -21,8 +21,7 @@ class EnvWrapper(gym.Env):
         self.width = width
         self.height = height
 
-        self.seq_len = seq_len
-        self.env = gym.make(environment, num_levels=num_levels, distribution_mode=difficulty)
+        self.env = gym.make(environment, start_level=start_level, num_levels=num_levels, distribution_mode=difficulty)
         self.env.frameskip = frameskip
         self.motion_blur = motion_blur
 

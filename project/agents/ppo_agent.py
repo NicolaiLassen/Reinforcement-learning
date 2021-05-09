@@ -143,7 +143,6 @@ class PPOAgent(BaseAgent):
             self.optimizer_critic.step()
 
             # CKPT log
-            print(R_T.sum())
             with torch.no_grad():
                 curiosity_losses[i] = curiosity_loss.item()
                 intrinsic_rewards[i] = R_T.sum()
@@ -154,11 +153,12 @@ class PPOAgent(BaseAgent):
         self.mem_buffer.clear()
 
         # Save CKPT
-        self.intrinsic_reward_ckpt.append(intrinsic_rewards.sum().item())
-        self.curiosity_loss_ckpt.append(curiosity_losses.sum().item())
-        self.actor_loss_ckpt.append(actor_losses.sum().item())
-        self.critic_loss_ckpt.append(critic_losses.sum().item())
-        self.reward_ckpt.append(self.mem_buffer.rewards.sum().item())
+        with torch.no_grad():
+            self.intrinsic_reward_ckpt.append(intrinsic_rewards.sum().item())
+            self.curiosity_loss_ckpt.append(curiosity_losses.sum().item())
+            self.actor_loss_ckpt.append(actor_losses.sum().item())
+            self.critic_loss_ckpt.append(critic_losses.sum().item())
+            self.reward_ckpt.append(self.mem_buffer.rewards.sum().item())
         self.save_ckpt()
 
     def __eval(self):

@@ -67,4 +67,3 @@ if __name__ == "__main__":
     agent = PPOAgent(env_wrapper, actor, critic, icm, optimizer, name=args.model)
     # SAVE MODEL EVERY 8000000 / 5000 / 100
     agent.train(5000, 8000000)
-    # agent.train(5000, 8000000)

@@ -11,7 +11,7 @@ class PolicyModel(nn.Module):
         self.width = width
         self.height = height
         self.motion_blur = motion_blur
-        self.embed_dim = 256
+        self.embed_dim = 128
 
         self.fc_1 = nn.Linear(width * height, self.embed_dim)
         self.fc_2 = nn.Linear(motion_blur * self.embed_dim, self.embed_dim)
@@ -36,7 +36,6 @@ class PolicyModelVIT(nn.Module):
         self.width = width
         self.height = height
         self.motion_blur = motion_blur
-        self.embed_dim = 512
 
         self.image_encoder = ViT(
             image_size=64,
@@ -46,7 +45,7 @@ class PolicyModelVIT(nn.Module):
             depth=2,
             channels=4,
             heads=2,
-            mlp_dim=self.embed_dim,
+            mlp_dim=256,
             dropout=0.1,
             emb_dropout=0.1
         )

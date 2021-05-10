@@ -184,7 +184,6 @@ class PPOAgent(BaseAgent):
         return (self.eta * r_i_ts).detach(), r_i_ts.mean(), F.cross_entropy(a_t_hats, actions)
 
     def __clipped_surrogate_objective(self, action_log_probs, A_T):
-        # torch.exp(action_log_probs) / torch.exp(self.mem_buffer.action_log_prob)
         r_T_theta = torch.exp(action_log_probs - self.mem_buffer.action_log_prob)
         r_T_c_theta = torch.clamp(r_T_theta, min=1 - self.eps_c, max=1 + self.eps_c)
         return torch.min(r_T_theta * A_T, r_T_c_theta * A_T).mean()  # E

@@ -39,13 +39,13 @@ class PolicyModelVIT(nn.Module):
 
         self.image_encoder = ViT(
             image_size=64,
-            patch_size=16,
+            patch_size=8,
             num_classes=action_dim,
-            dim=256,
+            dim=128,
             depth=2,
             channels=4,
             heads=2,
-            mlp_dim=256,
+            mlp_dim=128,
             dropout=0,
             emb_dropout=0
         )

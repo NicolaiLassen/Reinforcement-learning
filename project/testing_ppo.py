@@ -37,10 +37,10 @@ if __name__ == '__main__':
     height = 64
 
     actor_conv = PolicyModelConv(width, height, 15).cuda()
-    actor_conv.load_state_dict(torch.load("ckpt_ppo_conv/starpilot_easy/actor_100.ckpt"))
+    actor_conv.load_state_dict(torch.load("ckpt_ppo_conv/starpilot_easy/actor_950.ckpt"))
     actor_conv.eval()
-    test_agent_ppo(actor_conv, test_range=[0, 200])
+    print(sum(test_agent_ppo(actor_conv, test_range=[200, 400])))
 
-    actor_vit = PolicyModelVIT(width, height, 15).cuda()
+    # actor_vit = PolicyModelVIT(width, height, 15).eval()
 
     # actor = PolicyModelConv(width, height, env_wrapper.env.action_space.n).cuda()

@@ -32,7 +32,7 @@ class PPOAgent(BaseAgent):
                  curiosity: nn.Module = None,
                  optimizer: optim.Optimizer = None,
                  name="vit",  # vit or conv
-                 n_acc_gradient=10,
+                 n_acc_gradient=5,
                  gamma=0.9,
                  eta=0.5,
                  beta=0.8,

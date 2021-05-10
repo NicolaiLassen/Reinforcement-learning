@@ -11,17 +11,18 @@ class PolicyModel(nn.Module):
         self.width = width
         self.height = height
         self.motion_blur = motion_blur
-        self.embed_dim = 512
+        self.embed_dim = 256
 
-        self.fc_1 = nn.Linear(motion_blur * width * height, self.embed_dim)
-        self.fc_2 = nn.Linear(self.embed_dim, self.embed_dim)
+        self.fc_1 = nn.Linear(width * height, self.embed_dim)
+        self.fc_2 = nn.Linear(motion_blur * self.embed_dim, self.embed_dim)
         self.fc_out = nn.Linear(self.embed_dim, action_dim)
         self.activation = nn.ReLU()
 
     def forward(self, x):
-        out = x.view(-1, self.motion_blur * self.width * self.height)
+        out = x.view(-1, self.motion_blur, self.width * self.height)
         out = self.fc_1(out)
         out = self.activation(out)
+        out = out.view(-1, self.motion_blur * self.embed_dim)
         out = self.fc_2(out)
         out = self.activation(out)
         return self.fc_out(out)
@@ -63,7 +64,6 @@ class PolicyModelConv(nn.Module):
         self.width = width
         self.height = height
         self.motion_blur = motion_blur
-
         self.embed_dim = 512
 
         # Natural Head

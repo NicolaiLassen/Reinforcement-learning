@@ -65,9 +65,9 @@ if __name__ == "__main__":
     # https://www.aicrowd.com/challenges/neurips-2020-procgen-competition
     # Challenge generalize for 8 million time steps cover 200 levels
     # max batch size GPU limit 64x64 * 2000 * nets_size
-    #print(get_n_params(actor))
+    # print(get_n_params(actor))
     agent = PPOAgent(env_wrapper, actor, critic, icm, optimizer_actor, name=args.model)
     # SAVE MODEL EVERY (8000000/4) / 2000 / 50
     # print(get_n_params(actor))
-    agent.train(10, int(8000000 / motion_blur_c))
-    # agent.train(2000, int(8000000 / motion_blur_c))
+    # agent.train(10, int(8000000 / motion_blur_c))
+    agent.train(2000, int(8000000 / motion_blur_c))

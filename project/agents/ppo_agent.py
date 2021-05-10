@@ -89,18 +89,14 @@ class PPOAgent(BaseAgent):
             torch.save(self.actor_old.state_dict(),
                        "{}/actor_{}.ckpt".format(base, self.t_update))
 
-        # torch.save(torch.tensor(self.curiosity_loss_ckpt),
-        #            "{}/losses_curiosity.ckpt".format(base, self.name))
-        #
-        # torch.save(torch.tensor(self.intrinsic_reward_ckpt),
-        #            "{}/intrinsic_rewards.ckpt".format(base, self.name))
-
+        torch.save(torch.tensor(self.curiosity_loss_ckpt),
+                   "{}/losses_curiosity.ckpt".format(base, self.name))
+        torch.save(torch.tensor(self.intrinsic_reward_ckpt),
+                   "{}/intrinsic_rewards.ckpt".format(base, self.name))
         torch.save(torch.tensor(self.actor_loss_ckpt),
                    "{}/losses_actor.ckpt".format(base, self.name))
-
         torch.save(torch.tensor(self.critic_loss_ckpt),
                    "{}/losses_critic.ckpt".format(base, self.name))
-
         torch.save(torch.tensor(self.reward_ckpt),
                    "{}/rewards.ckpt".format(base, self.name))
 
@@ -119,34 +115,27 @@ class PPOAgent(BaseAgent):
         d_r = self.__discounted_rewards()
         A_T = normalize_dist(self.__advantages(d_r, state_values))
 
-        # print(d_r)
-        # print(A_T)
-        # print(state_values)
-
-        # r_i_ts, r_i_ts_loss, a_t_hat_loss = self.__intrinsic_reward_objective()
-        R_T = A_T  # + r_i_ts
+        r_i_ts, r_i_ts_loss, a_t_hat_loss = self.__intrinsic_reward_objective()
+        R_T = A_T + r_i_ts
 
         actor_loss = - self.__clipped_surrogate_objective(action_log_probs, R_T)  # L^CLIP
 
-        critic_loss = (0.5 * torch.pow(state_values - self.mem_buffer.rewards, 2)).mean()  # E # c1 L^VF
-        # print(critic_loss)
+        critic_loss = (0.5 * torch.pow(state_values - d_r, 2)).mean()  # E # c1 L^VF
 
         entropy_bonus = entropy * self.loss_entropy_c  # c2 S[]
 
-        # curiosity_loss = (1 - (a_t_hat_loss * self.beta) + (r_i_ts_loss * self.beta))
+        curiosity_loss = (1 - (a_t_hat_loss * self.beta) + (r_i_ts_loss * self.beta))
 
         self.optimizer.zero_grad()
         # Gradient ascent -(actor_loss - critic_loss + entropy_bonus)
-        # curiosity acent -(E phi()) + ICM_loss
-        total_loss = (actor_loss + critic_loss - entropy_bonus).mean()
-        # total_loss = (actor_loss - critic_loss + entropy_bonus).mean() + curiosity_loss
+        total_loss = (actor_loss + critic_loss - entropy_bonus).mean() + curiosity_loss
         total_loss.backward()
         self.optimizer.step()
 
         # Save CKPT
         with torch.no_grad():
-            # self.intrinsic_reward_ckpt.append(intrinsic_rewards.sum().item())
-            # self.curiosity_loss_ckpt.append(curiosity_losses.sum().item())
+            self.intrinsic_reward_ckpt.append(r_i_ts.sum().item())
+            self.curiosity_loss_ckpt.append(curiosity_loss.item())
             self.actor_loss_ckpt.append(actor_loss.sum().item())
             self.critic_loss_ckpt.append(critic_loss.sum().item())
             self.reward_ckpt.append(self.mem_buffer.rewards.sum().item())

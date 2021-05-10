@@ -14,7 +14,7 @@ def smooth(y, box_pts):
 
 
 if __name__ == '__main__':
-    rewards = torch.load('../ckpt_ppo_vit_no_icm/starpilot_easy/rewards.ckpt')
+    rewards = torch.load('../ckpt_ppo_vit/starpilot_easy/rewards.ckpt')
     # rewards = torch.load('../ckpt_ppo_vit/starpilot_easy/intrinsic_rewards.ckpt')[15:]
     # rewards = torch.load('../ckpt_ppo_vit/starpilot_easy/rewards.ckpt')
 

@@ -113,10 +113,10 @@ class PPOAgent(BaseAgent):
 
         action_log_probs, state_values, entropy = self.__eval()
         d_r = self.__discounted_rewards()
-        A_T = normalize_dist(self.__advantages(d_r, state_values))
+        A_T = self.__advantages(d_r, state_values)
 
         r_i_ts, r_i_ts_loss, a_t_hat_loss = self.__intrinsic_reward_objective()
-        R_T = A_T + r_i_ts
+        R_T = normalize_dist(A_T + r_i_ts)
 
         actor_loss = - self.__clipped_surrogate_objective(action_log_probs, R_T)  # L^CLIP
 
@@ -124,7 +124,7 @@ class PPOAgent(BaseAgent):
 
         entropy_bonus = entropy * self.loss_entropy_c  # c2 S[]
 
-        curiosity_loss = (1 - (a_t_hat_loss * self.beta) + (r_i_ts_loss * self.beta))
+        curiosity_loss = (1 - (a_t_hat_loss * self.beta) + (r_i_ts_loss * self.beta))  # Li LF
 
         self.optimizer.zero_grad()
         # Gradient ascent -(actor_loss - critic_loss + entropy_bonus)

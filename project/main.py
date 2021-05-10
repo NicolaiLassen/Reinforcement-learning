@@ -38,9 +38,9 @@ if __name__ == "__main__":
     height = 64
 
     # Use static lr for testing purpose
-    lr_actor = 0.0005
-    lr_critic = 0.0005
-    lr_icm = 0.005
+    lr_actor = 3e-4
+    lr_critic = 1e-3
+    lr_icm = 1e-3
 
     # Hardcode for starpilot
     env_wrapper = EnvWrapper('procgen:procgen-starpilot-v0', motion_blur=motion_blur_c)

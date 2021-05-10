@@ -33,16 +33,17 @@ if __name__ == "__main__":
     if args.model not in ["vit", "conv", "vit_no_icm"]:
         exit(1)
 
+    motion_blur_c = 4
     width = 64
     height = 64
 
     # Use static lr for testing purpose
     lr_actor = 0.0005
+    lr_critic = 0.0005
     lr_icm = 0.005
-    lr_critic = 0.005
 
     # Hardcode for starpilot
-    env_wrapper = EnvWrapper('procgen:procgen-starpilot-v0')
+    env_wrapper = EnvWrapper('procgen:procgen-starpilot-v0', motion_blur=motion_blur_c)
     create_dir("./ckpt_ppo_{}".format(args.model))
     create_dir("./ckpt_ppo_{}/starpilot_easy".format(args.model))
 
@@ -57,7 +58,7 @@ if __name__ == "__main__":
 
     optimizer = torch.optim.Adam([
         {'params': actor.parameters(), 'lr': lr_actor},
-        {'params': icm.parameters(), 'lr': lr_icm},
+        # {'params': icm.parameters(), 'lr': lr_icm},
         {'params': critic.parameters(), 'lr': lr_critic}
     ])
 
@@ -65,5 +66,5 @@ if __name__ == "__main__":
     # Challenge generalize for 8 million time steps cover 200 levels
     # max batch size GPU limit 64x64 * 2000 * nets_size
     agent = PPOAgent(env_wrapper, actor, critic, icm, optimizer, name=args.model)
-    # SAVE MODEL EVERY 8000000 / 2000 / 100
-    agent.train(2000, 8000000)
+    # SAVE MODEL EVERY (8000000/4) / 2000 / 50
+    agent.train(2000, int(8000000 / motion_blur_c))

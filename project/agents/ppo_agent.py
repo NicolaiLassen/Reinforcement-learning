@@ -17,10 +17,10 @@ class PPOAgent(BaseAgent):
 
     # counters ckpt
     t_update = 0  # t * 1000
-    model_save_every = 100  # 8000000 / 5000 / 100
+    model_save_every = 50  # (8000000/4)  / 2000 / 50
 
-    # intrinsic_reward_ckpt = []
-    # curiosity_loss_ckpt = []
+    intrinsic_reward_ckpt = []
+    curiosity_loss_ckpt = []
     actor_loss_ckpt = []
     critic_loss_ckpt = []
     reward_ckpt = []
@@ -32,7 +32,6 @@ class PPOAgent(BaseAgent):
                  curiosity: nn.Module = None,
                  optimizer: optim.Optimizer = None,
                  name="vit",  # vit or conv
-                 n_acc_gradient=2,
                  gamma=0.9,
                  eta=0.5,
                  beta=0.8,
@@ -52,7 +51,6 @@ class PPOAgent(BaseAgent):
         # Curiosity
         self.curiosity = curiosity
         # Hyper n
-        self.n_acc_grad = n_acc_gradient
         self.n_max_Times_update = n_max_Times_update
         # Hyper c
         self.gamma = gamma
@@ -73,8 +71,7 @@ class PPOAgent(BaseAgent):
                 s = s1
                 action, probs, log_prob = self.act(s)
                 s1, r, d, _ = self.env.step(action)
-                v = self.critic(s).detach()
-                self.mem_buffer.set_next(s, s1, v, r, action, probs, log_prob, d)
+                self.mem_buffer.set_next(s, s1, r, action, probs, log_prob, d)
                 if t % update_every == 0:
                     self.__update()
 
@@ -116,51 +113,37 @@ class PPOAgent(BaseAgent):
 
     def __update(self):
 
-        curiosity_losses = torch.zeros(self.n_acc_grad)
-        actor_losses = torch.zeros(self.n_acc_grad)
-        critic_losses = torch.zeros(self.n_acc_grad)
-        intrinsic_rewards = torch.zeros(self.n_acc_grad)
+        # defrag GPU Mem
+        torch.cuda.empty_cache()
 
-        for i in range(self.n_acc_grad):
-            # defrag GPU Mem
-            torch.cuda.empty_cache()
+        action_log_probs, state_values, entropy = self.__eval()
+        d_r = normalize_dist(self.__discounted_rewards())
+        A_T = self.__advantages(d_r, state_values)
 
-            action_log_probs, state_values, entropy = self.__eval()
+        # r_i_ts, r_i_ts_loss, a_t_hat_loss = self.__intrinsic_reward_objective()
+        R_T = A_T  # + r_i_ts
 
-            d_r = normalize_dist(self.__discounted_rewards())
-            A_T = self.__advantages(d_r, state_values)
+        actor_loss = self.__clipped_surrogate_objective(action_log_probs, R_T)  # L^CLIP
+        critic_loss = (0.5 * torch.pow(state_values - self.mem_buffer.rewards, 2)).mean()  # E # c1 L^VF
 
-            ## r_i_ts, r_i_ts_loss, a_t_hat_loss = self.__intrinsic_reward_objective()
-            R_T = A_T  # + r_i_ts
+        entropy_bonus = entropy * self.loss_entropy_c  # c2 S[]
 
-            actor_loss = self.__clipped_surrogate_objective(action_log_probs, R_T)  # L^CLIP
-            critic_loss = (
-                    0.5 * torch.pow((A_T + self.mem_buffer.state_values) - state_values, 2)).mean()  # E # c1 L^VF
+        # curiosity_loss = (1 - (a_t_hat_loss * self.beta) + (r_i_ts_loss * self.beta))
 
-            entropy_bonus = entropy * self.loss_entropy_c  # c2 S[]
-
-            # curiosity_loss = (1 - (a_t_hat_loss * self.beta) + (r_i_ts_loss * self.beta))
-
-            self.optimizer.zero_grad()
-            # Gradient ascent -(actor_loss - critic_loss + entropy_bonus)
-            # curiosity acent -(E phi()) + ICM_loss
-            total_loss = (-actor_loss + critic_loss - entropy_bonus).mean()  # + curiosity_loss
-            total_loss.backward()
-            self.optimizer.step()
-
-            # CKPT log
-            with torch.no_grad():
-                # intrinsic_rewards[i] = r_i_ts.mean().item()
-                # curiosity_losses[i] = curiosity_loss.mean().item()
-                actor_losses[i] = actor_loss.mean().item()
-                critic_losses[i] = critic_loss.mean().item()
+        self.optimizer.zero_grad()
+        # Gradient ascent -(actor_loss - critic_loss + entropy_bonus)
+        # curiosity acent -(E phi()) + ICM_loss
+        total_loss = (- actor_loss + critic_loss - entropy_bonus).mean()
+        # total_loss = (actor_loss - critic_loss + entropy_bonus).mean() + curiosity_loss
+        total_loss.backward()
+        self.optimizer.step()
 
         # Save CKPT
         with torch.no_grad():
             # self.intrinsic_reward_ckpt.append(intrinsic_rewards.sum().item())
             # self.curiosity_loss_ckpt.append(curiosity_losses.sum().item())
-            self.actor_loss_ckpt.append(actor_losses.sum().item())
-            self.critic_loss_ckpt.append(critic_losses.sum().item())
+            self.actor_loss_ckpt.append(actor_loss.sum().item())
+            self.critic_loss_ckpt.append(critic_loss.sum().item())
             self.reward_ckpt.append(self.mem_buffer.rewards.sum().item())
         self.save_ckpt()
 
@@ -183,7 +166,7 @@ class PPOAgent(BaseAgent):
             advantages[t] = discounted_reward - state_values[t] + last_state_value * (
                     self.gamma ** (T - t))
             t += 1
-        return advantages.float().cuda()
+        return advantages.float().cuda().detach()
 
     def __discounted_rewards(self):
         discounted_rewards = torch.zeros(len(self.mem_buffer.rewards))
@@ -202,13 +185,12 @@ class PPOAgent(BaseAgent):
         actions = self.mem_buffer.actions
 
         a_t_hats, phi_t1_hats, phi_t1s, phi_ts = self.curiosity(states, next_states, action_probs)
-
         r_i_ts = F.mse_loss(phi_t1_hats, phi_t1s, reduction='none').sum(-1)
 
         return (self.eta * r_i_ts).detach(), r_i_ts.mean(), F.cross_entropy(a_t_hats, actions)
 
-    def __clipped_surrogate_objective(self, action_log_probs, R_T):
+    def __clipped_surrogate_objective(self, action_log_probs, A_T):
         # torch.exp(action_log_probs) / torch.exp(self.mem_buffer.action_log_prob)
         r_T_theta = torch.exp(action_log_probs - self.mem_buffer.action_log_prob)
         r_T_c_theta = torch.clamp(r_T_theta, min=1 - self.eps_c, max=1 + self.eps_c)
-        return torch.min(r_T_theta * R_T, r_T_c_theta * R_T).mean()  # E
+        return torch.min(r_T_theta * A_T, r_T_c_theta * A_T).mean()  # E

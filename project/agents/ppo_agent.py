@@ -143,7 +143,8 @@ class PPOAgent(BaseAgent):
 
             self.optimizer.zero_grad()
             # Gradient ascent -(actor_loss - critic_loss + entropy_bonus)
-            total_loss = (- actor_loss + critic_loss - entropy_bonus).mean() + curiosity_loss
+            # curiosity acent -(E phi()) + ICM_loss
+            total_loss = (actor_loss - critic_loss + entropy_bonus).mean() + curiosity_loss
             total_loss.backward()
             self.optimizer.step()
 

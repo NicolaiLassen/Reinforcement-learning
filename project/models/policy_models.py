@@ -35,28 +35,24 @@ class PolicyModelVIT(nn.Module):
         self.width = width
         self.height = height
         self.motion_blur = motion_blur
-
         self.embed_dim = 512
+
         self.image_encoder = ViT(
             image_size=64,
             patch_size=16,
-            num_classes=self.embed_dim,
+            num_classes=action_dim,
             dim=256,
             depth=2,
             channels=4,
             heads=2,
-            mlp_dim=256,
+            mlp_dim=self.embed_dim,
             dropout=0.1,
             emb_dropout=0.1
         )
 
-        self.fc_out = nn.Linear(self.embed_dim, action_dim)
-        self.activation = nn.ReLU()
-
     def forward(self, x):
         out = x.view(-1, self.motion_blur, self.width, self.height)
         out = self.image_encoder(out)
-        out = self.fc_out(out)
         return F.log_softmax(out, dim=-1)
 
 

@@ -41,7 +41,6 @@ class PPOAgent(BaseAgent):
         self.env = env
         self.actor = actor
         self.actor_old = copy.deepcopy(actor)
-        self.actor_old.load_state_dict(actor.state_dict())
         self.critic = critic
 
         self.name = name
@@ -76,7 +75,7 @@ class PPOAgent(BaseAgent):
                     self.__update()
 
     def act(self, state):
-        action_logs_prob = self.actor_old(state)
+        action_logs_prob = self.actor_old(state.unsqueeze(0))
         action_dist = Categorical(action_logs_prob)
         action = action_dist.sample()
         action_dist_log_prob = action_dist.log_prob(action)
@@ -117,14 +116,20 @@ class PPOAgent(BaseAgent):
         torch.cuda.empty_cache()
 
         action_log_probs, state_values, entropy = self.__eval()
-        d_r = normalize_dist(self.__discounted_rewards())
-        A_T = self.__advantages(d_r, state_values)
+        d_r = self.__discounted_rewards()
+        A_T = normalize_dist(self.__advantages(d_r, state_values))
+
+        # print(d_r)
+        # print(A_T)
+        # print(state_values)
 
         # r_i_ts, r_i_ts_loss, a_t_hat_loss = self.__intrinsic_reward_objective()
         R_T = A_T  # + r_i_ts
 
-        actor_loss = self.__clipped_surrogate_objective(action_log_probs, R_T)  # L^CLIP
+        actor_loss = - self.__clipped_surrogate_objective(action_log_probs, R_T)  # L^CLIP
+
         critic_loss = (0.5 * torch.pow(state_values - self.mem_buffer.rewards, 2)).mean()  # E # c1 L^VF
+        # print(critic_loss)
 
         entropy_bonus = entropy * self.loss_entropy_c  # c2 S[]
 
@@ -133,7 +138,7 @@ class PPOAgent(BaseAgent):
         self.optimizer.zero_grad()
         # Gradient ascent -(actor_loss - critic_loss + entropy_bonus)
         # curiosity acent -(E phi()) + ICM_loss
-        total_loss = (- actor_loss + critic_loss - entropy_bonus).mean()
+        total_loss = (actor_loss + critic_loss - entropy_bonus).mean()
         # total_loss = (actor_loss - critic_loss + entropy_bonus).mean() + curiosity_loss
         total_loss.backward()
         self.optimizer.step()
@@ -151,10 +156,10 @@ class PPOAgent(BaseAgent):
         self.mem_buffer.clear()
 
     def __eval(self):
-        action_prob = self.actor(self.mem_buffer.states)
-        dist = Categorical(action_prob)
+        action_logs_prob = self.actor(self.mem_buffer.states)
+        dist = Categorical(action_logs_prob)
         action_log_prob = dist.log_prob(self.mem_buffer.actions)
-        state_values = self.critic(self.mem_buffer.states)
+        state_values = self.critic(self.mem_buffer.states.unsqueeze(0))
         return action_log_prob, state_values.squeeze(1), dist.entropy()
 
     def __advantages(self, discounted_rewards, state_values):
@@ -174,7 +179,7 @@ class PPOAgent(BaseAgent):
         t = 0
         for r, d in zip(reversed(self.mem_buffer.rewards), reversed(self.mem_buffer.done)):
             running_reward = r + (running_reward * self.gamma) * (1. - d)  # Zero out done states
-            discounted_rewards[t] = running_reward
+            discounted_rewards[-t] = running_reward
             t += 1
         return discounted_rewards.float().cuda()
 

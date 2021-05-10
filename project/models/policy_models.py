@@ -46,13 +46,12 @@ class PolicyModelVIT(nn.Module):
             channels=4,
             heads=2,
             mlp_dim=256,
-            dropout=0.1,
-            emb_dropout=0.1
+            dropout=0,
+            emb_dropout=0
         )
 
     def forward(self, x):
-        out = x.view(-1, self.motion_blur, self.width, self.height)
-        out = self.image_encoder(out)
+        out = self.image_encoder(x)
         return F.log_softmax(out, dim=-1)
 
 
@@ -76,9 +75,7 @@ class PolicyModelConv(nn.Module):
         self.activation = nn.ReLU()
 
     def forward(self, x):
-        out = x.view(-1, self.motion_blur, self.width, self.height)
-
-        out = self.activation(self.conv1(out))
+        out = self.activation(self.conv1(x))
         out = self.activation(self.conv2(out))
         out = self.activation(self.conv3(out))
         out = out.view(-1, self.motion_blur * 32 * 4)

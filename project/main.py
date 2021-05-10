@@ -30,7 +30,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print(args.model)
-    if args.model not in ["vit", "conv"]:
+    if args.model not in ["vit", "conv", "vit_no_icm"]:
         exit(1)
 
     width = 64
@@ -47,12 +47,10 @@ if __name__ == "__main__":
     create_dir("./ckpt_ppo_{}/starpilot_easy".format(args.model))
 
     actor = None
-    if args.model == "vit":
+    if args.model == "vit" or "vit_no_icm":
         actor = PolicyModelVIT(width, height, env_wrapper.env.action_space.n).cuda()
     else:
         actor = PolicyModelConv(width, height, env_wrapper.env.action_space.n).cuda()
-
-    args.model = 'vit_no_icm'
 
     critic = PolicyModel(width, height).cuda()
     icm = IntrinsicCuriosityModule(env_wrapper.env.action_space.n).cuda()
@@ -67,5 +65,5 @@ if __name__ == "__main__":
     # Challenge generalize for 8 million time steps cover 200 levels
     # max batch size GPU limit 64x64 * 2000 * nets_size
     agent = PPOAgent(env_wrapper, actor, critic, icm, optimizer, name=args.model)
-    # SAVE MODEL EVERY 8000000 / 5000 / 100
-    agent.train(4000, 8000000)
+    # SAVE MODEL EVERY 8000000 / 2000 / 100
+    agent.train(2000, 8000000)

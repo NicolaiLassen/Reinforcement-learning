@@ -11,4 +11,4 @@
  module load python3/3.6.2
  pip3 install --user -r requirements.txt
  echo "Traning..."
- python3 main.py -m "vit"
+ python3 main.py -m "vit_no_icm"

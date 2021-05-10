@@ -44,8 +44,8 @@ class PolicyModelVIT(nn.Module):
             dim=128,
             depth=2,
             channels=4,
-            heads=2,
-            mlp_dim=128,
+            heads=3,
+            mlp_dim=256,
             dropout=0,
             emb_dropout=0
         )

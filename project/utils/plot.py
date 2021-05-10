@@ -18,7 +18,7 @@ def smooth(y, box_pts):
 
 
 if __name__ == '__main__':
-    rewards = torch.load('../ckpt_ppo_vit/starpilot_easy/intrinsic_rewards.ckpt')
+    rewards = torch.load('../ckpt_ppo_vit/starpilot_easy/rewards.ckpt')
     x = np.array([i * 2000 * 4 for i in range(len(rewards))])
     y = rewards.numpy()
 
@@ -27,16 +27,16 @@ if __name__ == '__main__':
     sy[:4] = rewards[:4]
     sy[len(sy) - 4:len(sy)] = rewards[len(sy) - 4:len(sy)]
 
-    d_smooth = {'Steps': x, 'log2 Rewards': sy}
+    d_smooth = {'Steps': x, 'Rewards': sy}
     df_smooth = pd.DataFrame(data=d_smooth)
 
-    d = {'Steps': x, 'log2 Rewards': y}
+    d = {'Steps': x, 'Rewards': y}
     df = pd.DataFrame(data=d)
 
-    # #FFFF00
+    # #FF0000
     # #ffcc66
-    sns.lineplot(x="Steps", y="log2 Rewards", data=df, color='#ffcc66', alpha=0.3, linewidth='2.6')
-    sns.lineplot(x="Steps", y="log2 Rewards", data=df_smooth, color='#ffcc66', linewidth='1.5')
+    sns.lineplot(x="Steps", y="Rewards", data=df, color='#FF0000', alpha=0.3, linewidth='2.6')
+    sns.lineplot(x="Steps", y="Rewards", data=df_smooth, color='#FF0000', linewidth='1.5')
     plt.title("PPO VIT traning intrinsic rewards")
-    plt.yscale('log', base=2)
+    # plt.yscale('log', base=2)
     plt.show()

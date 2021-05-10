@@ -69,5 +69,4 @@ if __name__ == "__main__":
     agent = PPOAgent(env_wrapper, actor, critic, icm, optimizer_actor, name=args.model)
     # SAVE MODEL EVERY (8000000/4) / 2000 / 50
     # print(get_n_params(actor))
-    # agent.train(10, int(8000000 / motion_blur_c))
     agent.train(2000, int(8000000 / motion_blur_c))

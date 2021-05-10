@@ -19,8 +19,8 @@ class PPOAgent(BaseAgent):
     t_update = 0  # t * 1000
     model_save_every = 100  # 8000000 / 5000 / 100
 
-    intrinsic_reward_ckpt = []
-    curiosity_loss_ckpt = []
+    # intrinsic_reward_ckpt = []
+    # curiosity_loss_ckpt = []
     actor_loss_ckpt = []
     critic_loss_ckpt = []
     reward_ckpt = []
@@ -93,11 +93,11 @@ class PPOAgent(BaseAgent):
             torch.save(self.actor_old.state_dict(),
                        "{}/actor_{}.ckpt".format(base, self.t_update))
 
-        torch.save(torch.tensor(self.curiosity_loss_ckpt),
-                   "{}/losses_curiosity.ckpt".format(base, self.name))
-
-        torch.save(torch.tensor(self.intrinsic_reward_ckpt),
-                   "{}/intrinsic_rewards.ckpt".format(base, self.name))
+        # torch.save(torch.tensor(self.curiosity_loss_ckpt),
+        #            "{}/losses_curiosity.ckpt".format(base, self.name))
+        #
+        # torch.save(torch.tensor(self.intrinsic_reward_ckpt),
+        #            "{}/intrinsic_rewards.ckpt".format(base, self.name))
 
         torch.save(torch.tensor(self.actor_loss_ckpt),
                    "{}/losses_actor.ckpt".format(base, self.name))
@@ -131,7 +131,7 @@ class PPOAgent(BaseAgent):
             A_T = self.__advantages(d_r, state_values)
 
             ## r_i_ts, r_i_ts_loss, a_t_hat_loss = self.__intrinsic_reward_objective()
-            R_T = A_T # + r_i_ts
+            R_T = A_T  # + r_i_ts
 
             actor_loss = self.__clipped_surrogate_objective(action_log_probs, R_T)  # L^CLIP
             critic_loss = (

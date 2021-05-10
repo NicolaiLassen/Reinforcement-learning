@@ -32,7 +32,7 @@ class PPOAgent(BaseAgent):
                  curiosity: nn.Module = None,
                  optimizer: optim.Optimizer = None,
                  name="vit",  # vit or conv
-                 n_acc_gradient=5,
+                 n_acc_gradient=2,
                  gamma=0.9,
                  eta=0.5,
                  beta=0.8,
@@ -130,8 +130,8 @@ class PPOAgent(BaseAgent):
             d_r = normalize_dist(self.__discounted_rewards())
             A_T = self.__advantages(d_r, state_values)
 
-            r_i_ts, r_i_ts_loss, a_t_hat_loss = self.__intrinsic_reward_objective()
-            R_T = A_T + r_i_ts
+            ## r_i_ts, r_i_ts_loss, a_t_hat_loss = self.__intrinsic_reward_objective()
+            R_T = A_T # + r_i_ts
 
             actor_loss = self.__clipped_surrogate_objective(action_log_probs, R_T)  # L^CLIP
             critic_loss = (
@@ -139,26 +139,26 @@ class PPOAgent(BaseAgent):
 
             entropy_bonus = entropy * self.loss_entropy_c  # c2 S[]
 
-            curiosity_loss = (1 - (a_t_hat_loss * self.beta) + (r_i_ts_loss * self.beta))
+            # curiosity_loss = (1 - (a_t_hat_loss * self.beta) + (r_i_ts_loss * self.beta))
 
             self.optimizer.zero_grad()
             # Gradient ascent -(actor_loss - critic_loss + entropy_bonus)
             # curiosity acent -(E phi()) + ICM_loss
-            total_loss = (actor_loss - critic_loss + entropy_bonus).mean() + curiosity_loss
+            total_loss = (-actor_loss + critic_loss - entropy_bonus).mean()  # + curiosity_loss
             total_loss.backward()
             self.optimizer.step()
 
             # CKPT log
             with torch.no_grad():
-                intrinsic_rewards[i] = r_i_ts.mean().item()
-                curiosity_losses[i] = curiosity_loss.mean().item()
+                # intrinsic_rewards[i] = r_i_ts.mean().item()
+                # curiosity_losses[i] = curiosity_loss.mean().item()
                 actor_losses[i] = actor_loss.mean().item()
                 critic_losses[i] = critic_loss.mean().item()
 
         # Save CKPT
         with torch.no_grad():
-            self.intrinsic_reward_ckpt.append(intrinsic_rewards.sum().item())
-            self.curiosity_loss_ckpt.append(curiosity_losses.sum().item())
+            # self.intrinsic_reward_ckpt.append(intrinsic_rewards.sum().item())
+            # self.curiosity_loss_ckpt.append(curiosity_losses.sum().item())
             self.actor_loss_ckpt.append(actor_losses.sum().item())
             self.critic_loss_ckpt.append(critic_losses.sum().item())
             self.reward_ckpt.append(self.mem_buffer.rewards.sum().item())

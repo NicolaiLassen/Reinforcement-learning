@@ -52,6 +52,8 @@ if __name__ == "__main__":
     else:
         actor = PolicyModelConv(width, height, env_wrapper.env.action_space.n).cuda()
 
+    args.model = 'vit_no_icm'
+
     critic = PolicyModel(width, height).cuda()
     icm = IntrinsicCuriosityModule(env_wrapper.env.action_space.n).cuda()
 

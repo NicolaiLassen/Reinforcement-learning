@@ -68,4 +68,4 @@ if __name__ == "__main__":
     # max batch size GPU limit 64x64 * 2000 * nets_size
     agent = PPOAgent(env_wrapper, actor, critic, icm, optimizer, name=args.model)
     # SAVE MODEL EVERY 8000000 / 5000 / 100
-    agent.train(5000, 8000000)
+    agent.train(4000, 8000000)

@@ -56,7 +56,7 @@ if __name__ == "__main__":
     critic = PolicyModel(width, height).cuda()
     icm = IntrinsicCuriosityModule(env_wrapper.env.action_space.n).cuda()
 
-    optimizer_actor = torch.optim.Adam([
+    optimizer = torch.optim.Adam([
         {'params': actor.parameters(), 'lr': lr_actor},
         {'params': icm.parameters(), 'lr': lr_icm},
         {'params': critic.parameters(), 'lr': lr_critic}
@@ -66,7 +66,7 @@ if __name__ == "__main__":
     # Challenge generalize for 8 million time steps cover 200 levels
     # max batch size GPU limit 64x64 * 2000 * nets_size
     # print(get_n_params(actor))
-    agent = PPOAgent(env_wrapper, actor, critic, icm, optimizer_actor, name=args.model)
+    agent = PPOAgent(env_wrapper, actor, critic, icm, optimizer, name=args.model)
     # SAVE MODEL EVERY (8000000/4) / 2000 / 50
     # print(get_n_params(actor))
     agent.train(2000, int(8000000 / motion_blur_c))

@@ -1,11 +1,12 @@
 import os
+import time
 
 import gym
 import torch
 from torchvision import transforms
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
-
+import matplotlib.pyplot as plt
 
 class EnvWrapper(gym.Env):
     def __init__(self, environment,
@@ -19,6 +20,8 @@ class EnvWrapper(gym.Env):
                  motion_blur: int = 4):
         self.width = width
         self.height = height
+
+        self.cnt = 0
 
         self.env = gym.make(environment, start_level=start_level, num_levels=num_levels, distribution_mode=difficulty)
         self.motion_blur = motion_blur
@@ -37,6 +40,11 @@ class EnvWrapper(gym.Env):
         acc_done = False
         for i in range(self.motion_blur):
             obs, reward, done, info = self.env.step(action)
+
+            plt.imshow(obs)
+            plt.savefig('gif/{}.png'.format(self.cnt))
+            self.cnt +=1
+
             if i == 0:
                 observations = self.obs_transformer(obs)
             else:
